@@ -10,6 +10,7 @@ require("pacman")
 install.packages("ggpubr")
 devtools::install_github("thomasp85/patchwork")
 
+p_load(readxl)
 p_load(rvest)
 library(ggplot2)
 library(patchwork)
@@ -50,6 +51,26 @@ Caracteristicas22017 = read_sav("2017/Características 2.sav")
 Participacion2017 = read_sav("2017/Participación.sav")
 Viviendas2017 = read_sav("2017/Tabla viviendas.sav")
 
+
+##Inscripción de cedulas y datos del MOE
+
+Cedulas_inscritas <- read_excel("MOE_Inscripción.xlsx")
+Resultados_Presi_20182davuelta <- read_excel("MOE-Result.Presi.xlsx")
+Resultados_Alc_2015 <- read_excel("MOE.Result.Alcaldia2015.xlsx")
+Riesgos_elec <- read_excel("MOE_riesgos.xlsx")
+
+Riesgos_elec$`ELN 2018`[is.na(Riesgos_elec$`ELN 2018`)] <- mean(Riesgos_elec$`ELN 2018`, na.rm = TRUE) 
+Riesgos_elec$`AU ELN 2018`[is.na(Riesgos_elec$`AU ELN 2018`)] <- mean(Riesgos_elec$`AU ELN 2018`, na.rm = TRUE) 
+Riesgos_elec$`AUC 2015`[is.na(Riesgos_elec$`AUC 2015`)] <- mean(Riesgos_elec$`AUC 2015`, na.rm = TRUE) 
+Riesgos_elec$`ELN 2015`[is.na(Riesgos_elec$`ELN 2015`)] <- mean(Riesgos_elec$`ELN 2015`, na.rm = TRUE) 
+Riesgos_elec$`ELN 2016`[is.na(Riesgos_elec$`ELN 2016`)] <- mean(Riesgos_elec$`ELN 2016`, na.rm = TRUE) 
+Riesgos_elec$`FARC 2015`[is.na(Riesgos_elec$`FARC 2015`)] <- mean(Riesgos_elec$`FARC 2015`, na.rm = TRUE) 
+Riesgos_elec$`FARC 2016`[is.na(Riesgos_elec$`FARC 2016`)] <- mean(Riesgos_elec$`FARC 2016`, na.rm = TRUE)
+Riesgos_elec$`Guerrilas 2015`[is.na(Riesgos_elec$`Guerrilas 2015`)] <- mean(Riesgos_elec$`Guerrilas 2015`, na.rm = TRUE)
+Riesgos_elec$`PBCO 2015`[is.na(Riesgos_elec$`PBCO 2015`)] <- mean(Riesgos_elec$`PBCO 2015`, na.rm = TRUE)
+Riesgos_elec$`PBCO 2016`[is.na(Riesgos_elec$`PBCO 2016`)] <- mean(Riesgos_elec$`PBCO 2016`, na.rm = TRUE)
+Riesgos_elec$`PBCO 2018`[is.na(Riesgos_elec$`PBCO 2018`)] <- mean(Riesgos_elec$`PBCO 2018`, na.rm = TRUE)
+
 ##Se crean consolidados por año
 
 EncuestaPolitica_2015 <- merge(CaracteristicasGenerales2015, Democracia2015, # Data frames u objectos a ser transformados
@@ -83,6 +104,40 @@ EncuestaPolitica_2017 <- merge(EncuestaPolitica_2017, Caracteristicas22017, # Da
 EncuestaPolitica_2017 <- merge(EncuestaPolitica_2017, Viviendas2017, # Data frames u objectos a ser transformados
                                by = c("DIRECTORIO"), no.dups = TRUE, all.x = TRUE, all.y = TRUE)
 
+  
+##Consolidados MOE
+MOE_2015 <- merge(Cedulas_inscritas, Riesgos_elec, # Data frames u objectos a ser transformados
+                 by = c("Code DANE"), no.dups = TRUE)
+
+names(Resultados_Alc_2015)[names(Resultados_Alc_2015) == "Code Dane"] <- "Code DANE"
+MOE_2015 <- merge(MOE_2015, Resultados_Alc_2015, # Data frames u objectos a ser transformados
+                  by = c("Code DANE"), no.dups = TRUE)
+
+MOE_2017 <- merge(Cedulas_inscritas, Riesgos_elec, # Data frames u objectos a ser transformados
+                  by = c("Code DANE"), no.dups = TRUE)
+
+names(Resultados_Presi_20182davuelta)[names(Resultados_Presi_20182davuelta) == "Code"] <- "Code DANE"
+MOE_2017 <- merge(MOE_2017, Resultados_Presi_20182davuelta, # Data frames u objectos a ser transformados
+                  by = c("Code DANE"), no.dups = TRUE)
+
+
+##Se agregan las variables por region y se pegan las dos bases 
+
+MOE_2017 = aggregate(MOE_2017,
+                by = list(MOE_2017$REGION),
+                FUN = mean)
+
+MOE_2015 = aggregate(MOE_2015,
+                     by = list(MOE_2015$REGION),
+                     FUN = mean)
+
+EncuestaPolitica_2015 <- merge(EncuestaPolitica_2015, MOE_2015, # Data frames u objectos a ser transformados
+                               by = c("REGION"), no.dups = TRUE, all.x = TRUE, all.y = FALSE)
+
+EncuestaPolitica_2017 <- merge(EncuestaPolitica_2017, MOE_2017, # Data frames u objectos a ser transformados
+                               by = c("REGION"), no.dups = TRUE, all.x = TRUE, all.y = FALSE)
+
+
 
 ##Hay seis observaciones duplicadas, entonces se eliminan
 which(duplicated(names(EncuestaPolitica_2015)))
@@ -97,7 +152,7 @@ EncuestaPolitica_2017= subset(EncuestaPolitica_2017, select = -c(FEX_P.x,NRO_ENC
               
 
   EncuestaPolitica_2015 <- EncuestaPolitica_2015 %>%
-    mutate_at(.vars = c("NRO_ENCUESTA" ,"P4000" , "P4031S1","P4031S1A1", "P4031S2", "P4031S3", "P4031S4", "P4031S4A1",
+    mutate_at(.vars = c("P4000" , "P4031S1","P4031S1A1", "P4031S2", "P4031S3", "P4031S4", "P4031S4A1",
                       "P4031S5", "P4090", "P70", "REGION", "P220", "P6008", "P605", "P6050", "P6160", "P6210", "P6210S1",     
                       "P6945", "P8586", "P606", "PERSONA_NUMERO", "P5332S6", "P5334S2", "P5334S3", "P5334S4", "P5334S5", "P5334S6", "P5334S7",       
                       "P5368S1", "P5368S2", "P5368S3", "P5368S4",  "P5368S5", "P5368S6", "P5368S7", "P5368S8" ,      
@@ -149,7 +204,6 @@ EncuestaPolitica_2017= subset(EncuestaPolitica_2017, select = -c(FEX_P.x,NRO_ENC
   
 str(EncuestaPolitica_2015)
 dim(EncuestaPolitica_2015)
-
 ##---------Tratamiento de missing values 2015
 
 cantidad_na <- sapply(EncuestaPolitica_2015, function(x) sum(is.na(x))) #Una función que me suma el número de NAs por variable
@@ -157,7 +211,7 @@ cantidad_na <- data.frame(cantidad_na) #Lo convierto en Data Frame
 porcentaje_na <- cantidad_na/nrow(EncuestaPolitica_2015) #Le saco el porcentaje de Missing values a cada variable
 
 # Porcentaje de observaciones faltantes. 
-porcentaje <- mean(porcentaje_na[,1]) #El 42.78% de las variables tiene NAs
+porcentaje <- mean(porcentaje_na[,1]) #El 20.39% de las variables tiene NAs
 print(paste0("En promedio el ", round(porcentaje*100, 2), "% de las entradas están vacías"))
 
 ##Ordenamos de mayor a menor
@@ -168,11 +222,11 @@ porcentaje_na <- rownames_to_column(porcentaje_na, "variable")
 # Quitamos las variables que no tienen NAs
 filtro <- porcentaje_na$cantidad_na == 0
 variables_sin_na <- porcentaje_na[filtro, "variable"]
-str_count(variables_sin_na) #Hay 2 variables sin NA
+str_count(variables_sin_na) #Hay 48 variables sin NA
 variables_sin_na <- paste(variables_sin_na, collapse = ", ")
 print(paste("Las variables sin NAs son:", variables_sin_na))
 
-porcentaje_na <- porcentaje_na[!filtro,] #Quedan 314 variables con NAs
+porcentaje_na <- porcentaje_na[!filtro,] #Quedan 307 variables con NAs
 
 orden <- porcentaje_na$variable[length(porcentaje_na$variable):1] #Se vuelven caracteres
 porcentaje_na$variable <- factor(porcentaje_na$variable,
@@ -183,7 +237,7 @@ str(porcentaje_na) # Se revisa el tipo de variables
 # Como son tantas variables vamos a hacer una gráfica con los que tienen menos NAs
 #para analizar si se pueden imputar los valores
 
-ggplot(porcentaje_na[300:314,], 
+ggplot(porcentaje_na[1:30,], 
        aes(y = variable, x = cantidad_na)) +
   geom_bar(stat = "identity", fill = "darkslategray3") +
   geom_text(aes(label = paste0(round(100*cantidad_na, 1), "%")),
@@ -196,51 +250,21 @@ ggplot(porcentaje_na[300:314,],
 
 #Si la cantidad de missing values es superior al 5% no se pueden imputar los datos (crearlos a partir de la media o la moda)
 ##Se eliminan las variables que tienen más del 10% de NAs
-filtro2 <- porcentaje_na$cantidad_na > 0.10
+filtro2 <- porcentaje_na$cantidad_na > 0.05
 variables_eliminadas <- porcentaje_na$variable[filtro2]
 EP_2015_clean <- EncuestaPolitica_2015 %>%
   select(-variables_eliminadas) 
 k0 <- ncol(EncuestaPolitica_2015)
 k1 <- ncol(EP_2015_clean)
 print(paste("Se eliminaron", k0-k1, "variables. Ahora la base tiene", k1, "columnas."))
-#Ahora solo tenemos 62 variables
+#Ahora solo tenemos 263 variables
 
 porcentaje_na %>%
-  filter(cantidad_na <= 0.05)
-#Nos quedan 4 variables con NAs: impa, p7070, isa, maxEducLevel
+  filter(cantidad_na <= 0.05) 
+#Nos quedan 215 variables con NAs
 
-
-#Como tres variables son continuas se reemplaza por la mediana, para que queden en el percentil 50% 
-geih_clean <- geih_clean %>%
-  mutate(impa = ifelse(is.na(impa), median(impa, na.rm = T), impa), #Mediana sin tener en cuenta los NAs
-         p7070 = ifelse(is.na(p7070), median(p7070, na.rm = T), p7070),
-         isa = ifelse(is.na(isa), median(isa, na.rm = T), isa))
-
-
-sum(is.na(geih_clean$impa)) #Reviso
-sum(is.na(geih_clean$p7070)) #Reviso
-sum(is.na(geih_clean$isa)) #Reviso
-
-#Para MaxLevelEduc toca sacar la moda y eso lo hacemos mirando su plot y después reemplazando
-ggplot(geih_clean, aes(x = maxEducLevel)) + geom_bar()
-
-#La moda es la categoría 7
-moda_MaxEduc <- which(table(geih_clean$maxEducLevel) == max(table(geih_clean$maxEducLevel))) #Guardo el mayor valor
-filtro2 <- is.na(geih_clean$maxEducLevel) #filtro solo los NAs
-geih_clean$maxEducLevel[filtro2] <- moda_MaxEduc #Reemplazo los NAs por la moda
-table(geih_clean$maxEducLevel) #Reviso
-
-sum(is.na(geih_clean$maxEducLevel)) #Reviso
-
-geih_clean %>% #Se revisa que todo el DF esté sin NAs
-  is.na() %>%
-  sum()
-
-#En adición hay ingresos que no se ven reflajados en el ingreso total. Por tal motivo se actualizará
-#esta variable incluyendo los ingresos del último mes no registrados
-geih_clean <- geih_clean %>%
-  mutate(ingtot = ifelse(ingtot == 0, p7500s1a1 + p7500s2a1 + p7500s3a1 + impa +
-                           isa , ingtot))
+porcentaje_na %>%
+  filter(cantidad_na <= 0.05) 
 
 ##---------Tratamiento de missing values 2017
 
@@ -249,7 +273,7 @@ cantidad_na <- data.frame(cantidad_na) #Lo convierto en Data Frame
 porcentaje_na <- cantidad_na/nrow(EncuestaPolitica_2017) #Le saco el porcentaje de Missing values a cada variable
 
 # Porcentaje de observaciones faltantes. 
-porcentaje <- mean(porcentaje_na[,1]) #El 16.26% de las variables tiene NAs
+porcentaje <- mean(porcentaje_na[,1]) #El 16.08% de las variables tiene NAs
 print(paste0("En promedio el ", round(porcentaje*100, 2), "% de las entradas están vacías"))
 
 ##Ordenamos de mayor a menor
@@ -260,11 +284,11 @@ porcentaje_na <- rownames_to_column(porcentaje_na, "variable")
 # Quitamos las variables que no tienen NAs
 filtro <- porcentaje_na$cantidad_na == 0
 variables_sin_na <- porcentaje_na[filtro, "variable"]
-str_count(variables_sin_na) #Hay 11 variables sin NA
+str_count(variables_sin_na) #Hay 56 variables sin NA
 variables_sin_na <- paste(variables_sin_na, collapse = ", ")
 print(paste("Las variables sin NAs son:", variables_sin_na))
 
-porcentaje_na <- porcentaje_na[!filtro,] #Quedan 297 variables con NAs
+porcentaje_na <- porcentaje_na[!filtro,] #Quedan 307 variables con NAs
 
 orden <- porcentaje_na$variable[length(porcentaje_na$variable):1] #Se vuelven caracteres
 porcentaje_na$variable <- factor(porcentaje_na$variable,
@@ -275,7 +299,7 @@ str(porcentaje_na) # Se revisa el tipo de variables
 # Como son tantas variables vamos a hacer una gráfica con los que tienen menos NAs
 #para analizar si se pueden imputar los valores
 
-ggplot(porcentaje_na[1:20,], 
+ggplot(porcentaje_na[1:30,], 
        aes(y = variable, x = cantidad_na)) +
   geom_bar(stat = "identity", fill = "darkslategray3") +
   geom_text(aes(label = paste0(round(100*cantidad_na, 1), "%")),
@@ -288,48 +312,18 @@ ggplot(porcentaje_na[1:20,],
 
 #Si la cantidad de missing values es superior al 5% no se pueden imputar los datos (crearlos a partir de la media o la moda)
 ##Se eliminan las variables que tienen más del 10% de NAs
-filtro2 <- porcentaje_na$cantidad_na > 0.10
+filtro2 <- porcentaje_na$cantidad_na > 0.05
 variables_eliminadas <- porcentaje_na$variable[filtro2]
 EP_2017_clean <- EncuestaPolitica_2017 %>%
   select(-variables_eliminadas) 
 k0 <- ncol(EncuestaPolitica_2017)
 k1 <- ncol(EP_2017_clean)
 print(paste("Se eliminaron", k0-k1, "variables. Ahora la base tiene", k1, "columnas."))
-#Ahora solo tenemos 219 variables
+#Ahora solo tenemos 262 variables
 
 porcentaje_na %>%
-  filter(cantidad_na <= 0.10)
-#Nos quedan 4 variables con NAs: impa, p7070, isa, maxEducLevel
+  filter(cantidad_na <= 0.05) 
+#Nos quedan 206 variables con NAs
 
-
-#Como tres variables son continuas se reemplaza por la mediana, para que queden en el percentil 50% 
-geih_clean <- geih_clean %>%
-  mutate(impa = ifelse(is.na(impa), median(impa, na.rm = T), impa), #Mediana sin tener en cuenta los NAs
-         p7070 = ifelse(is.na(p7070), median(p7070, na.rm = T), p7070),
-         isa = ifelse(is.na(isa), median(isa, na.rm = T), isa))
-
-
-sum(is.na(geih_clean$impa)) #Reviso
-sum(is.na(geih_clean$p7070)) #Reviso
-sum(is.na(geih_clean$isa)) #Reviso
-
-#Para MaxLevelEduc toca sacar la moda y eso lo hacemos mirando su plot y después reemplazando
-ggplot(geih_clean, aes(x = maxEducLevel)) + geom_bar()
-
-#La moda es la categoría 7
-moda_MaxEduc <- which(table(geih_clean$maxEducLevel) == max(table(geih_clean$maxEducLevel))) #Guardo el mayor valor
-filtro2 <- is.na(geih_clean$maxEducLevel) #filtro solo los NAs
-geih_clean$maxEducLevel[filtro2] <- moda_MaxEduc #Reemplazo los NAs por la moda
-table(geih_clean$maxEducLevel) #Reviso
-
-sum(is.na(geih_clean$maxEducLevel)) #Reviso
-
-geih_clean %>% #Se revisa que todo el DF esté sin NAs
-  is.na() %>%
-  sum()
-
-#En adición hay ingresos que no se ven reflajados en el ingreso total. Por tal motivo se actualizará
-#esta variable incluyendo los ingresos del último mes no registrados
-geih_clean <- geih_clean %>%
-  mutate(ingtot = ifelse(ingtot == 0, p7500s1a1 + p7500s2a1 + p7500s3a1 + impa +
-                           isa , ingtot))
+porcentaje_na %>%
+  filter(cantidad_na <= 0.05) 
