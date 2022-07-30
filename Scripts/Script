@@ -1,0 +1,335 @@
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#%    Data Acquisition    		          %
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+##Paquetes 
+rm(list = ls())
+
+
+install.packages("devtools")
+require("pacman")
+install.packages("ggpubr")
+devtools::install_github("thomasp85/patchwork")
+
+p_load(rvest)
+library(ggplot2)
+library(patchwork)
+p_load(rio) 
+p_load(tidyverse)
+p_load(e1071) 
+p_load(EnvStats) 
+p_load(tidymodels) 
+p_load(ggplot2) 
+p_load(scales) 
+p_load(ggpubr) 
+p_load(knitr) 
+p_load(kableExtra)
+p_load(broom)
+p_load(caret)
+p_load(haven)
+
+
+#---------Importar bases de datos
+
+##Se leen las bases de datos de la Encuesta de cultura Política 2015 y 2017
+
+##Año 2015
+
+CaracteristicasGenerales2015 <- read_dta("2015/Caracteristicas Generales.dta")
+Democracia2015 = read_sav("2015/Democracia.sav")
+EleccionesyPartidos2015 = read_sav("2015/Elecciones y Partidos.sav")
+Fuerzatrabajo2015 = read_sav("2015/Fuerza de Trabajo.sav")
+Participacion2015 = read_sav("2015/Participación.sav")
+Viviendas2015 = read_sav("2015/Tabla viviendas.sav")
+
+##Año 2017
+
+CaracteristicasGenerales2017 <- read_sav("2017/Características Generales.sav")
+Democracia2017 = read_sav("2017/Democracia.sav")
+EleccionesyPartidos2017 = read.delim("2017/Elecciones y Partidos.txt", header = TRUE, sep = "\t")
+Caracteristicas22017 = read_sav("2017/Características 2.sav")
+Participacion2017 = read_sav("2017/Participación.sav")
+Viviendas2017 = read_sav("2017/Tabla viviendas.sav")
+
+##Se crean consolidados por año
+
+EncuestaPolitica_2015 <- merge(CaracteristicasGenerales2015, Democracia2015, # Data frames u objectos a ser transformados
+      by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"))
+
+EncuestaPolitica_2015 <- merge(EncuestaPolitica_2015, EleccionesyPartidos2015, # Data frames u objectos a ser transformados
+                               by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"), no.dups = TRUE)
+
+EncuestaPolitica_2015 <- merge(EncuestaPolitica_2015, Participacion2015, # Data frames u objectos a ser transformados
+                               by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"), no.dups = TRUE)
+
+EncuestaPolitica_2015 <- merge(EncuestaPolitica_2015, Fuerzatrabajo2015, # Data frames u objectos a ser transformados
+                               by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"), no.dups = TRUE)
+
+EncuestaPolitica_2015 <- merge(EncuestaPolitica_2015, Viviendas2015, # Data frames u objectos a ser transformados
+                               by = c("DIRECTORIO"), no.dups = TRUE, all.x = TRUE, all.y = TRUE)
+
+
+EncuestaPolitica_2017 <- merge(CaracteristicasGenerales2017, Democracia2017, # Data frames u objectos a ser transformados
+                               by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"))
+
+EncuestaPolitica_2017 <- merge(EncuestaPolitica_2017, EleccionesyPartidos2017, # Data frames u objectos a ser transformados
+                               by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"), no.dups = TRUE)
+
+EncuestaPolitica_2017 <- merge(EncuestaPolitica_2017, Participacion2017, # Data frames u objectos a ser transformados
+                               by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"), no.dups = TRUE)
+
+EncuestaPolitica_2017 <- merge(EncuestaPolitica_2017, Caracteristicas22017, # Data frames u objectos a ser transformados
+                               by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"), no.dups = TRUE)
+
+EncuestaPolitica_2017 <- merge(EncuestaPolitica_2017, Viviendas2017, # Data frames u objectos a ser transformados
+                               by = c("DIRECTORIO"), no.dups = TRUE, all.x = TRUE, all.y = TRUE)
+
+
+##Hay seis observaciones duplicadas, entonces se eliminan
+which(duplicated(names(EncuestaPolitica_2015)))
+EncuestaPolitica_2015 = subset(EncuestaPolitica_2015, select = -c(FEX_P.x,NRO_ENCUESTA.x, NRO_ENCUESTA.y ) )
+which(duplicated(names(EncuestaPolitica_2017)))
+EncuestaPolitica_2017= subset(EncuestaPolitica_2017, select = -c(FEX_P.x,NRO_ENCUESTA.x, NRO_ENCUESTA.y) )
+
+
+##Ahora se corrigen las variables para que sean leídas como categóricas, bulein o string dependiendo del caso. 
+##Lo anterior, ya que en su mayoría fueron leídas como enteros.
+##Se definen entonces las variables categóricas
+              
+
+  EncuestaPolitica_2015 <- EncuestaPolitica_2015 %>%
+    mutate_at(.vars = c("NRO_ENCUESTA" ,"P4000" , "P4031S1","P4031S1A1", "P4031S2", "P4031S3", "P4031S4", "P4031S4A1",
+                      "P4031S5", "P4090", "P70", "REGION", "P220", "P6008", "P605", "P6050", "P6160", "P6210", "P6210S1",     
+                      "P6945", "P8586", "P606", "PERSONA_NUMERO", "P5332S6", "P5334S2", "P5334S3", "P5334S4", "P5334S5", "P5334S6", "P5334S7",       
+                      "P5368S1", "P5368S2", "P5368S3", "P5368S4",  "P5368S5", "P5368S6", "P5368S7", "P5368S8" ,      
+                      "P5373S1", "P5373S10", "P5373S11", "P5373S12", "P5373S2", "P5373S3" , "P5373S4", "P5373S5",       
+                      "P5373S6", "P5373S7", "P5373S8", "P5373S9", "P5376S1" , "P5376S2", "P5376S3",       
+                      "P5376S4", "P5376S5", "P5376S6",  "P5386", "P5389S1", "P5389S10", "P5389S11", "P5389S2",       
+                      "P5389S3", "P5389S4", "P5389S5", "P5389S6", "P5389S7", "P5389S8", "P5389S9", "P5393",         
+                      "P5396S1" ,  "P5396S2", "P5396S3", "P5396S4", "P5396S5", "P5396S6", "P5400S1", "P5400S2",       
+                      "P5400S3", "P5400S4", "P5400S5", "P5400S6", "P5400S7", "P5400S8",  "P5322S3",    
+                      "P5322S4", "P5323", "P5324S2", "P5324S3", "P5324S4", "P5324S5", "P5325S1", "P5325S2",      
+                      "P5325S3", "P5325S4", "P5325S5", "P5325S6", "P5326" ,"P5327", "P5335",         
+                      "P5336S1", "P5336S10", "P5336S11", "P5336S12", "P5336S2", "P5336S3", "P5336S4", "P5336S5" ,       
+                      "P5336S6", "P5336S7", "P5336S8", "P5336S9", "P5337S1", "P5337S2", "P5337S3",  "P5337S4",     
+                      "P5337S5", "P5337S6", "P5337S7", "P5338S1", "P5338S2", "P5338S3", "P5338S4", "P5338S5",       
+                      "P5338S6", "P6933" , "P517", "P5264S1", "P5264S2", "P5264S3", "P5264S4","P5264S5",        
+                      "P5264S6", "P5264S7", "P5265", "P5266S1", "P5266S2", "P5266S3", "P5266S4", "P5266S5",        
+                      "P5266S6", "P5266S7", "P5266S8", "P5272S1", "P5272S2", "P5272S3", "P5272S4", "P5272S5", "P5272S6","P5272S7",               
+                      "P5307S1" , "P5307S2", "P5307S3", "P5307S4","P5307S5",  "P5308", "P5315S1", "P5315S2",      
+                      "P5315S3" ,"P5315S4", "P5315S5","P5315S6", "P5315S7", "P5315S8","P5319",  "P6934S1",      
+                      "P6934S2","P6934S3","P6934S4" ,"P6934S5", "P6934S6" , "P6934S7" , "P6936S1" ,    "P6936S2",
+                     "P6936S3", "P6936S4", "P6936S5", "P6936S6","P6936S7","P6937S1","P6937S2" , "P6937S3" ,     
+                     "P6937S4","P6937S5","P6938S1","P6938S2",  "P6938S3", "P6938S4" , "P6939S1" ,  "P6939S2",      
+                    "P6939S3","P6939S4" ,"P6939S5", "P6939S6" ,"P6939S7", "P6939S8", "P6939S9",  "P6942S1",      
+                     "P6942S10" ,"P6942S11","P6942S2","P6942S3", "P6942S4","P6942S5", "P6942S6" , "P6942S7"  ,    
+                     "P6942S8","P6942S9", "P6943S1" , "P6943S2" ,"P6943S3",  "P6943S4", "P6944S1","P6944S2" ,     
+                    "P6944S3","P6944S4" , "P6944S5" , "P6944S6", "P6944S7"),
+    .funs = factor)
+  
+  EncuestaPolitica_2017<- EncuestaPolitica_2017  %>%
+    mutate_at(.vars = c("REGION", "P4090", "P4000", "P4031S1", "P4031S1A1", "P4031S2", "P4031S3",
+                        "P4031S4", "P4031S4A1", "P4031S5", "P70", "NRO_ENCUESTA", "HOGAR_NUMERO", "PERSONA_NUMERO",
+                        "P6008", "P220", "P1069", "P1069S1", "P6050", "P605", "P6160", "P8586", "P6210S1", "P6945", "P606", "P5368S1",
+                        "P5368S2", "P5368S3", "P5368S4", "P5368S5", "P5368S6", "P5368S7", "P5368S8", "P5334S2", "P5334S3", "P5334S4", "P5334S5", "P5334S6",
+                        "P5334S7", "P5373S1", "P5373S10", "P5373S12", "P5373S11", "P5373S2", "P5373S3", "P5373S4", "P5373S5", "P5373S6", "P5373S7", "P5373S8",
+                        "P5373S9", "P5376S1", "P5376S2", "P5376S3", "P5376S4", "P5376S5", "P5376S6", "P5386", "P5389S1", "P5389S2", "P5389S3", "P5389S4", "P5389S5",
+                        "P5389S6", "P5389S7", "P5389S8", "P5389S9", "P5389S10", "P5389S11", "P5393", "P5396S1", "P5396S2", "P5396S3", "P5396S4", "P5396S5", "P5396S6",
+                        "P5400S1", "P5400S2", "P5400S3", "P5400S4", "P5400S5", "P5400S6", "P5400S7", "P5400S8", "P5332S6", "P5335", "P5336S1", "P5336S2", 
+                        "P5336S3", "P5336S4", "P5336S5", "P5336S6", "P5336S7", "P5336S8", "P5336S9", "P5336S10", "P5336S11", "P5336S12", "P5337S1", "P5337S2", "P5337S3",
+                        "P5337S4", "P5337S5", "P5337S6", "P5337S7", "P5338S1", "P5338S2", "P5338S3", "P5338S4", "P5338S5", "P5338S6", "P5321S1", "P5321S2", "P5321S3", 
+                        "P5321S4", "P5321S5", "P5321S6", "P5321S7", "P5321S8", "P5321S9", "P5322S1","P5322S2", "P5322S3", "P5322S4", "P5323", "P5324S2", "P5324S3", "P5324S4",
+                        "P5324S5", "P5327", "P5315S1", "P5315S2", "P5315S3", "P5315S4", 
+                        "P5315S5", "P5315S6", "P5315S7", "P5315S8", "P5319", "P5307S1", "P5307S2", "P5307S3", "P5307S4", "P5307S5", "P6934S1", "P6934S2",
+                        "P6934S3", "P6934S4", "P6934S5", "P6934S6", "P6934S7", "P6936S1", "P6936S2", "P6936S3", "P6936S4", "P6936S5", "P6936S6", "P6936S7", "P517", 
+                        "P5264S1", "P5264S2", "P5264S3", "P5264S4", "P5264S5", "P5264S6", "P5264S7", "P5265", "P5266S1", "P5266S2", "P5266S3", "P5266S4", "P5266S5",
+                        "P5266S6", "P5266S7", "P5266S8", "P5272S1", "P5272S2", "P5272S3", "P5272S4", "P5272S5", "P5272S6", "P5272S7", "P6939S2", "P6939S3", "P6939S4", 
+                        "P6939S5", "P6939S6", "P1764S1", "P1764S2", "P1764S3", "P1764S4", "P1764S5", "P1764S6", "P1764S7", "P1764S8", "P1758", "P6943S2", "P6943S3", 
+                        "P6943S4", "P1754", "P1753", "P1752", "P1751", "P1749", "P1750", "P6944S1", "P6944S2", "P6944S3", "P6944S4", "P6944S5", "P6944S6", "P6944S7"), .funs = factor)
+
+  
+str(EncuestaPolitica_2015)
+dim(EncuestaPolitica_2015)
+
+##---------Tratamiento de missing values 2015
+
+cantidad_na <- sapply(EncuestaPolitica_2015, function(x) sum(is.na(x))) #Una función que me suma el número de NAs por variable
+cantidad_na <- data.frame(cantidad_na) #Lo convierto en Data Frame
+porcentaje_na <- cantidad_na/nrow(EncuestaPolitica_2015) #Le saco el porcentaje de Missing values a cada variable
+
+# Porcentaje de observaciones faltantes. 
+porcentaje <- mean(porcentaje_na[,1]) #El 42.78% de las variables tiene NAs
+print(paste0("En promedio el ", round(porcentaje*100, 2), "% de las entradas están vacías"))
+
+##Ordenamos de mayor a menor
+porcentaje_na <- arrange(porcentaje_na, desc(cantidad_na))
+# Convertimos el nombre de la fila en columna
+porcentaje_na <- rownames_to_column(porcentaje_na, "variable")
+
+# Quitamos las variables que no tienen NAs
+filtro <- porcentaje_na$cantidad_na == 0
+variables_sin_na <- porcentaje_na[filtro, "variable"]
+str_count(variables_sin_na) #Hay 2 variables sin NA
+variables_sin_na <- paste(variables_sin_na, collapse = ", ")
+print(paste("Las variables sin NAs son:", variables_sin_na))
+
+porcentaje_na <- porcentaje_na[!filtro,] #Quedan 314 variables con NAs
+
+orden <- porcentaje_na$variable[length(porcentaje_na$variable):1] #Se vuelven caracteres
+porcentaje_na$variable <- factor(porcentaje_na$variable,
+                                 levels = orden) #Se utilizan como factores para poder graficar
+
+str(porcentaje_na) # Se revisa el tipo de variables
+
+# Como son tantas variables vamos a hacer una gráfica con los que tienen menos NAs
+#para analizar si se pueden imputar los valores
+
+ggplot(porcentaje_na[300:314,], 
+       aes(y = variable, x = cantidad_na)) +
+  geom_bar(stat = "identity", fill = "darkslategray3") +
+  geom_text(aes(label = paste0(round(100*cantidad_na, 1), "%")),
+            colour = "white", position = "dodge", hjust = 1.3,
+            size = 2, fontface = "bold") +
+  theme_classic() +
+  labs(x = "Porcentaje de NAs", y = "Variables") +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1))
+
+
+#Si la cantidad de missing values es superior al 5% no se pueden imputar los datos (crearlos a partir de la media o la moda)
+##Se eliminan las variables que tienen más del 10% de NAs
+filtro2 <- porcentaje_na$cantidad_na > 0.10
+variables_eliminadas <- porcentaje_na$variable[filtro2]
+EP_2015_clean <- EncuestaPolitica_2015 %>%
+  select(-variables_eliminadas) 
+k0 <- ncol(EncuestaPolitica_2015)
+k1 <- ncol(EP_2015_clean)
+print(paste("Se eliminaron", k0-k1, "variables. Ahora la base tiene", k1, "columnas."))
+#Ahora solo tenemos 62 variables
+
+porcentaje_na %>%
+  filter(cantidad_na <= 0.05)
+#Nos quedan 4 variables con NAs: impa, p7070, isa, maxEducLevel
+
+
+#Como tres variables son continuas se reemplaza por la mediana, para que queden en el percentil 50% 
+geih_clean <- geih_clean %>%
+  mutate(impa = ifelse(is.na(impa), median(impa, na.rm = T), impa), #Mediana sin tener en cuenta los NAs
+         p7070 = ifelse(is.na(p7070), median(p7070, na.rm = T), p7070),
+         isa = ifelse(is.na(isa), median(isa, na.rm = T), isa))
+
+
+sum(is.na(geih_clean$impa)) #Reviso
+sum(is.na(geih_clean$p7070)) #Reviso
+sum(is.na(geih_clean$isa)) #Reviso
+
+#Para MaxLevelEduc toca sacar la moda y eso lo hacemos mirando su plot y después reemplazando
+ggplot(geih_clean, aes(x = maxEducLevel)) + geom_bar()
+
+#La moda es la categoría 7
+moda_MaxEduc <- which(table(geih_clean$maxEducLevel) == max(table(geih_clean$maxEducLevel))) #Guardo el mayor valor
+filtro2 <- is.na(geih_clean$maxEducLevel) #filtro solo los NAs
+geih_clean$maxEducLevel[filtro2] <- moda_MaxEduc #Reemplazo los NAs por la moda
+table(geih_clean$maxEducLevel) #Reviso
+
+sum(is.na(geih_clean$maxEducLevel)) #Reviso
+
+geih_clean %>% #Se revisa que todo el DF esté sin NAs
+  is.na() %>%
+  sum()
+
+#En adición hay ingresos que no se ven reflajados en el ingreso total. Por tal motivo se actualizará
+#esta variable incluyendo los ingresos del último mes no registrados
+geih_clean <- geih_clean %>%
+  mutate(ingtot = ifelse(ingtot == 0, p7500s1a1 + p7500s2a1 + p7500s3a1 + impa +
+                           isa , ingtot))
+
+##---------Tratamiento de missing values 2017
+
+cantidad_na <- sapply(EncuestaPolitica_2017, function(x) sum(is.na(x))) #Una función que me suma el número de NAs por variable
+cantidad_na <- data.frame(cantidad_na) #Lo convierto en Data Frame
+porcentaje_na <- cantidad_na/nrow(EncuestaPolitica_2017) #Le saco el porcentaje de Missing values a cada variable
+
+# Porcentaje de observaciones faltantes. 
+porcentaje <- mean(porcentaje_na[,1]) #El 16.26% de las variables tiene NAs
+print(paste0("En promedio el ", round(porcentaje*100, 2), "% de las entradas están vacías"))
+
+##Ordenamos de mayor a menor
+porcentaje_na <- arrange(porcentaje_na, desc(cantidad_na))
+# Convertimos el nombre de la fila en columna
+porcentaje_na <- rownames_to_column(porcentaje_na, "variable")
+
+# Quitamos las variables que no tienen NAs
+filtro <- porcentaje_na$cantidad_na == 0
+variables_sin_na <- porcentaje_na[filtro, "variable"]
+str_count(variables_sin_na) #Hay 11 variables sin NA
+variables_sin_na <- paste(variables_sin_na, collapse = ", ")
+print(paste("Las variables sin NAs son:", variables_sin_na))
+
+porcentaje_na <- porcentaje_na[!filtro,] #Quedan 297 variables con NAs
+
+orden <- porcentaje_na$variable[length(porcentaje_na$variable):1] #Se vuelven caracteres
+porcentaje_na$variable <- factor(porcentaje_na$variable,
+                                 levels = orden) #Se utilizan como factores para poder graficar
+
+str(porcentaje_na) # Se revisa el tipo de variables
+
+# Como son tantas variables vamos a hacer una gráfica con los que tienen menos NAs
+#para analizar si se pueden imputar los valores
+
+ggplot(porcentaje_na[1:20,], 
+       aes(y = variable, x = cantidad_na)) +
+  geom_bar(stat = "identity", fill = "darkslategray3") +
+  geom_text(aes(label = paste0(round(100*cantidad_na, 1), "%")),
+            colour = "white", position = "dodge", hjust = 1.3,
+            size = 2, fontface = "bold") +
+  theme_classic() +
+  labs(x = "Porcentaje de NAs", y = "Variables") +
+  scale_x_continuous(labels = scales::percent, limits = c(0, 1))
+
+
+#Si la cantidad de missing values es superior al 5% no se pueden imputar los datos (crearlos a partir de la media o la moda)
+##Se eliminan las variables que tienen más del 10% de NAs
+filtro2 <- porcentaje_na$cantidad_na > 0.10
+variables_eliminadas <- porcentaje_na$variable[filtro2]
+EP_2017_clean <- EncuestaPolitica_2017 %>%
+  select(-variables_eliminadas) 
+k0 <- ncol(EncuestaPolitica_2017)
+k1 <- ncol(EP_2017_clean)
+print(paste("Se eliminaron", k0-k1, "variables. Ahora la base tiene", k1, "columnas."))
+#Ahora solo tenemos 219 variables
+
+porcentaje_na %>%
+  filter(cantidad_na <= 0.10)
+#Nos quedan 4 variables con NAs: impa, p7070, isa, maxEducLevel
+
+
+#Como tres variables son continuas se reemplaza por la mediana, para que queden en el percentil 50% 
+geih_clean <- geih_clean %>%
+  mutate(impa = ifelse(is.na(impa), median(impa, na.rm = T), impa), #Mediana sin tener en cuenta los NAs
+         p7070 = ifelse(is.na(p7070), median(p7070, na.rm = T), p7070),
+         isa = ifelse(is.na(isa), median(isa, na.rm = T), isa))
+
+
+sum(is.na(geih_clean$impa)) #Reviso
+sum(is.na(geih_clean$p7070)) #Reviso
+sum(is.na(geih_clean$isa)) #Reviso
+
+#Para MaxLevelEduc toca sacar la moda y eso lo hacemos mirando su plot y después reemplazando
+ggplot(geih_clean, aes(x = maxEducLevel)) + geom_bar()
+
+#La moda es la categoría 7
+moda_MaxEduc <- which(table(geih_clean$maxEducLevel) == max(table(geih_clean$maxEducLevel))) #Guardo el mayor valor
+filtro2 <- is.na(geih_clean$maxEducLevel) #filtro solo los NAs
+geih_clean$maxEducLevel[filtro2] <- moda_MaxEduc #Reemplazo los NAs por la moda
+table(geih_clean$maxEducLevel) #Reviso
+
+sum(is.na(geih_clean$maxEducLevel)) #Reviso
+
+geih_clean %>% #Se revisa que todo el DF esté sin NAs
+  is.na() %>%
+  sum()
+
+#En adición hay ingresos que no se ven reflajados en el ingreso total. Por tal motivo se actualizará
+#esta variable incluyendo los ingresos del último mes no registrados
+geih_clean <- geih_clean %>%
+  mutate(ingtot = ifelse(ingtot == 0, p7500s1a1 + p7500s2a1 + p7500s3a1 + impa +
+                           isa , ingtot))
