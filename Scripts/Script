@@ -59,17 +59,20 @@ Resultados_Presi_20182davuelta <- read_excel("MOE-Result.Presi.xlsx")
 Resultados_Alc_2015 <- read_excel("MOE.Result.Alcaldia2015.xlsx")
 Riesgos_elec <- read_excel("MOE_riesgos.xlsx")
 
-Riesgos_elec$`ELN 2018`[is.na(Riesgos_elec$`ELN 2018`)] <- mean(Riesgos_elec$`ELN 2018`, na.rm = TRUE) 
-Riesgos_elec$`AU ELN 2018`[is.na(Riesgos_elec$`AU ELN 2018`)] <- mean(Riesgos_elec$`AU ELN 2018`, na.rm = TRUE) 
-Riesgos_elec$`AUC 2015`[is.na(Riesgos_elec$`AUC 2015`)] <- mean(Riesgos_elec$`AUC 2015`, na.rm = TRUE) 
-Riesgos_elec$`ELN 2015`[is.na(Riesgos_elec$`ELN 2015`)] <- mean(Riesgos_elec$`ELN 2015`, na.rm = TRUE) 
-Riesgos_elec$`ELN 2016`[is.na(Riesgos_elec$`ELN 2016`)] <- mean(Riesgos_elec$`ELN 2016`, na.rm = TRUE) 
-Riesgos_elec$`FARC 2015`[is.na(Riesgos_elec$`FARC 2015`)] <- mean(Riesgos_elec$`FARC 2015`, na.rm = TRUE) 
-Riesgos_elec$`FARC 2016`[is.na(Riesgos_elec$`FARC 2016`)] <- mean(Riesgos_elec$`FARC 2016`, na.rm = TRUE)
-Riesgos_elec$`Guerrilas 2015`[is.na(Riesgos_elec$`Guerrilas 2015`)] <- mean(Riesgos_elec$`Guerrilas 2015`, na.rm = TRUE)
-Riesgos_elec$`PBCO 2015`[is.na(Riesgos_elec$`PBCO 2015`)] <- mean(Riesgos_elec$`PBCO 2015`, na.rm = TRUE)
-Riesgos_elec$`PBCO 2016`[is.na(Riesgos_elec$`PBCO 2016`)] <- mean(Riesgos_elec$`PBCO 2016`, na.rm = TRUE)
-Riesgos_elec$`PBCO 2018`[is.na(Riesgos_elec$`PBCO 2018`)] <- mean(Riesgos_elec$`PBCO 2018`, na.rm = TRUE)
+##Los NAS en las siguientes variables significan que no hay presencia de estos grupos, por los que se les dará un valor de cero
+Riesgos_elec$`PBCO 2018` <- ifelse(is.na(Riesgos_elec$`PBCO 2018`), 0, Riesgos_elec$`PBCO 2018`)
+Riesgos_elec$`ELN 2018` <- ifelse(is.na(Riesgos_elec$`ELN 2018`), 0, Riesgos_elec$`ELN 2018`)
+Riesgos_elec$`AU ELN 2018` <- ifelse(is.na(Riesgos_elec$`AU ELN 2018`), 0, Riesgos_elec$`AU ELN 2018`)
+Riesgos_elec$`AUC 2015` <- ifelse(is.na(Riesgos_elec$`AUC 2015`), 0, Riesgos_elec$`AUC 2015`)
+Riesgos_elec$`ELN 2015` <- ifelse(is.na(Riesgos_elec$`ELN 2015`), 0, Riesgos_elec$`ELN 2015`)
+Riesgos_elec$`ELN 2016` <- ifelse(is.na(Riesgos_elec$`ELN 2016`), 0, Riesgos_elec$`ELN 2016`)
+Riesgos_elec$`FARC 2015` <- ifelse(is.na(Riesgos_elec$`FARC 2015`), 0, Riesgos_elec$`FARC 2015`)
+Riesgos_elec$`FARC 2016` <- ifelse(is.na(Riesgos_elec$`FARC 2016`), 0, Riesgos_elec$`FARC 2016`)
+Riesgos_elec$`Guerrilas 2015` <- ifelse(is.na(Riesgos_elec$`Guerrilas 2015`), 0, Riesgos_elec$`Guerrilas 2015`)
+Riesgos_elec$`PBCO 2015` <- ifelse(is.na(Riesgos_elec$`PBCO 2015`), 0, Riesgos_elec$`PBCO 2015`)
+Riesgos_elec$`PBCO 2016` <- ifelse(is.na(Riesgos_elec$`PBCO 2016`), 0, Riesgos_elec$`PBCO 2016`)
+Riesgos_elec$`PBCO 2018` <- ifelse(is.na(Riesgos_elec$`PBCO 2018`), 0, Riesgos_elec$`PBCO 2018`)
+
 
 ##Se crean consolidados por año
 
