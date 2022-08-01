@@ -4,16 +4,15 @@
 ##Paquetes 
 rm(list = ls())
 
-if (!require("tidyverse")) install.packages("tidyverse")
-install.packages("devtools")
-require("pacman")
-install.packages("ggpubr")
-devtools::install_github("thomasp85/patchwork")
 
+require("pacman")
+p_load("devtools")
+p_load("ggpubr")
+devtools::install_github("thomasp85/patchwork")
 p_load(readxl)
 p_load(rvest)
-library(ggplot2)
-library(patchwork)
+p_load(ggplot2)
+p_load(patchwork)
 p_load(rio) 
 p_load(tidyverse)
 p_load(e1071) 
@@ -27,6 +26,8 @@ p_load(kableExtra)
 p_load(broom)
 p_load(caret)
 p_load(haven)
+p_load(corrplot)
+p_load(psych)
 
 
 #---------Importar bases de datos
@@ -46,7 +47,7 @@ Viviendas2015 = read_sav("2015/Tabla viviendas.sav")
 
 CaracteristicasGenerales2017 <- read_sav("2017/Características Generales.sav")
 Democracia2017 = read_sav("2017/Democracia.sav")
-EleccionesyPartidos2017 = read.delim("2017/Elecciones y Partidos.txt", header = TRUE, sep = "\t")
+EleccionesyPartidos2017 = read_dta("2017/Elecciones y Partidos.dta")
 Caracteristicas22017 = read_sav("2017/Características 2.sav")
 Participacion2017 = read_sav("2017/Participación.sav")
 Viviendas2017 = read_sav("2017/Tabla viviendas.sav")
@@ -76,7 +77,7 @@ Riesgos_elec$`PBCO 2018` <- ifelse(is.na(Riesgos_elec$`PBCO 2018`), 0, Riesgos_e
 ##Se crean consolidados por año
 
 EncuestaPolitica_2015 <- merge(CaracteristicasGenerales2015, Democracia2015, # Data frames u objectos a ser transformados
-      by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"))
+                               by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"))
 
 EncuestaPolitica_2015 <- merge(EncuestaPolitica_2015, EleccionesyPartidos2015, # Data frames u objectos a ser transformados
                                by = c("DIRECTORIO", "HOGAR_NUMERO", "PERSONA_NUMERO"), no.dups = TRUE)
@@ -106,10 +107,10 @@ EncuestaPolitica_2017 <- merge(EncuestaPolitica_2017, Caracteristicas22017, # Da
 EncuestaPolitica_2017 <- merge(EncuestaPolitica_2017, Viviendas2017, # Data frames u objectos a ser transformados
                                by = c("DIRECTORIO"), no.dups = TRUE, all.x = TRUE, all.y = TRUE)
 
-  
+
 ##Consolidados MOE
 MOE_2015 <- merge(Cedulas_inscritas, Riesgos_elec, # Data frames u objectos a ser transformados
-                 by = c("Code DANE"), no.dups = TRUE)
+                  by = c("Code DANE"), no.dups = TRUE)
 
 names(Resultados_Alc_2015)[names(Resultados_Alc_2015) == "Code Dane"] <- "Code DANE"
 MOE_2015 <- merge(MOE_2015, Resultados_Alc_2015, # Data frames u objectos a ser transformados
@@ -126,8 +127,8 @@ MOE_2017 <- merge(MOE_2017, Resultados_Presi_20182davuelta, # Data frames u obje
 ##Se agregan las variables por region y se pegan las dos bases 
 
 MOE_2017 = aggregate(MOE_2017,
-                by = list(MOE_2017$REGION),
-                FUN = mean)
+                     by = list(MOE_2017$REGION),
+                     FUN = mean)
 
 MOE_2015 = aggregate(MOE_2015,
                      by = list(MOE_2015$REGION),
@@ -151,10 +152,10 @@ EncuestaPolitica_2017= subset(EncuestaPolitica_2017, select = -c(FEX_P.x,NRO_ENC
 ##Ahora se corrigen las variables para que sean leídas como categóricas, bulein o string dependiendo del caso. 
 ##Lo anterior, ya que en su mayoría fueron leídas como enteros.
 ##Se definen entonces las variables categóricas
-              
 
-  EncuestaPolitica_2015 <- EncuestaPolitica_2015 %>%
-    mutate_at(.vars = c("P4000" , "P4031S1","P4031S1A1", "P4031S2", "P4031S3", "P4031S4", "P4031S4A1",
+
+EncuestaPolitica_2015 <- EncuestaPolitica_2015 %>%
+  mutate_at(.vars = c("P4000" , "P4031S1","P4031S1A1", "P4031S2", "P4031S3", "P4031S4", "P4031S4A1",
                       "P4031S5", "P4090", "P70", "REGION", "P220", "P6008", "P605", "P6050", "P6160", "P6210", "P6210S1",     
                       "P6945", "P8586", "P606", "PERSONA_NUMERO", "P5332S6", "P5334S2", "P5334S3", "P5334S4", "P5334S5", "P5334S6", "P5334S7",       
                       "P5368S1", "P5368S2", "P5368S3", "P5368S4",  "P5368S5", "P5368S6", "P5368S7", "P5368S8" ,      
@@ -175,35 +176,35 @@ EncuestaPolitica_2017= subset(EncuestaPolitica_2017, select = -c(FEX_P.x,NRO_ENC
                       "P5307S1" , "P5307S2", "P5307S3", "P5307S4","P5307S5",  "P5308", "P5315S1", "P5315S2",      
                       "P5315S3" ,"P5315S4", "P5315S5","P5315S6", "P5315S7", "P5315S8","P5319",  "P6934S1",      
                       "P6934S2","P6934S3","P6934S4" ,"P6934S5", "P6934S6" , "P6934S7" , "P6936S1" ,    "P6936S2",
-                     "P6936S3", "P6936S4", "P6936S5", "P6936S6","P6936S7","P6937S1","P6937S2" , "P6937S3" ,     
-                     "P6937S4","P6937S5","P6938S1","P6938S2",  "P6938S3", "P6938S4" , "P6939S1" ,  "P6939S2",      
-                    "P6939S3","P6939S4" ,"P6939S5", "P6939S6" ,"P6939S7", "P6939S8", "P6939S9",  "P6942S1",      
-                     "P6942S10" ,"P6942S11","P6942S2","P6942S3", "P6942S4","P6942S5", "P6942S6" , "P6942S7"  ,    
-                     "P6942S8","P6942S9", "P6943S1" , "P6943S2" ,"P6943S3",  "P6943S4", "P6944S1","P6944S2" ,     
-                    "P6944S3","P6944S4" , "P6944S5" , "P6944S6", "P6944S7"),
-    .funs = factor)
-  
-  EncuestaPolitica_2017<- EncuestaPolitica_2017  %>%
-    mutate_at(.vars = c("REGION", "P4090", "P4000", "P4031S1", "P4031S1A1", "P4031S2", "P4031S3",
-                        "P4031S4", "P4031S4A1", "P4031S5", "P70", "NRO_ENCUESTA", "HOGAR_NUMERO", "PERSONA_NUMERO",
-                        "P6008", "P220", "P1069", "P1069S1", "P6050", "P605", "P6160", "P8586", "P6210S1", "P6945", "P606", "P5368S1",
-                        "P5368S2", "P5368S3", "P5368S4", "P5368S5", "P5368S6", "P5368S7", "P5368S8", "P5334S2", "P5334S3", "P5334S4", "P5334S5", "P5334S6",
-                        "P5334S7", "P5373S1", "P5373S10", "P5373S12", "P5373S11", "P5373S2", "P5373S3", "P5373S4", "P5373S5", "P5373S6", "P5373S7", "P5373S8",
-                        "P5373S9", "P5376S1", "P5376S2", "P5376S3", "P5376S4", "P5376S5", "P5376S6", "P5386", "P5389S1", "P5389S2", "P5389S3", "P5389S4", "P5389S5",
-                        "P5389S6", "P5389S7", "P5389S8", "P5389S9", "P5389S10", "P5389S11", "P5393", "P5396S1", "P5396S2", "P5396S3", "P5396S4", "P5396S5", "P5396S6",
-                        "P5400S1", "P5400S2", "P5400S3", "P5400S4", "P5400S5", "P5400S6", "P5400S7", "P5400S8", "P5332S6", "P5335", "P5336S1", "P5336S2", 
-                        "P5336S3", "P5336S4", "P5336S5", "P5336S6", "P5336S7", "P5336S8", "P5336S9", "P5336S10", "P5336S11", "P5336S12", "P5337S1", "P5337S2", "P5337S3",
-                        "P5337S4", "P5337S5", "P5337S6", "P5337S7", "P5338S1", "P5338S2", "P5338S3", "P5338S4", "P5338S5", "P5338S6", "P5321S1", "P5321S2", "P5321S3", 
-                        "P5321S4", "P5321S5", "P5321S6", "P5321S7", "P5321S8", "P5321S9", "P5322S1","P5322S2", "P5322S3", "P5322S4", "P5323", "P5324S2", "P5324S3", "P5324S4",
-                        "P5324S5", "P5327", "P5315S1", "P5315S2", "P5315S3", "P5315S4", 
-                        "P5315S5", "P5315S6", "P5315S7", "P5315S8", "P5319", "P5307S1", "P5307S2", "P5307S3", "P5307S4", "P5307S5", "P6934S1", "P6934S2",
-                        "P6934S3", "P6934S4", "P6934S5", "P6934S6", "P6934S7", "P6936S1", "P6936S2", "P6936S3", "P6936S4", "P6936S5", "P6936S6", "P6936S7", "P517", 
-                        "P5264S1", "P5264S2", "P5264S3", "P5264S4", "P5264S5", "P5264S6", "P5264S7", "P5265", "P5266S1", "P5266S2", "P5266S3", "P5266S4", "P5266S5",
-                        "P5266S6", "P5266S7", "P5266S8", "P5272S1", "P5272S2", "P5272S3", "P5272S4", "P5272S5", "P5272S6", "P5272S7", "P6939S2", "P6939S3", "P6939S4", 
-                        "P6939S5", "P6939S6", "P1764S1", "P1764S2", "P1764S3", "P1764S4", "P1764S5", "P1764S6", "P1764S7", "P1764S8", "P1758", "P6943S2", "P6943S3", 
-                        "P6943S4", "P1754", "P1753", "P1752", "P1751", "P1749", "P1750", "P6944S1", "P6944S2", "P6944S3", "P6944S4", "P6944S5", "P6944S6", "P6944S7"), .funs = factor)
+                      "P6936S3", "P6936S4", "P6936S5", "P6936S6","P6936S7","P6937S1","P6937S2" , "P6937S3" ,     
+                      "P6937S4","P6937S5","P6938S1","P6938S2",  "P6938S3", "P6938S4" , "P6939S1" ,  "P6939S2",      
+                      "P6939S3","P6939S4" ,"P6939S5", "P6939S6" ,"P6939S7", "P6939S8", "P6939S9",  "P6942S1",      
+                      "P6942S10" ,"P6942S11","P6942S2","P6942S3", "P6942S4","P6942S5", "P6942S6" , "P6942S7"  ,    
+                      "P6942S8","P6942S9", "P6943S1" , "P6943S2" ,"P6943S3",  "P6943S4", "P6944S1","P6944S2" ,     
+                      "P6944S3","P6944S4" , "P6944S5" , "P6944S6", "P6944S7"),
+            .funs = factor)
 
-  
+EncuestaPolitica_2017<- EncuestaPolitica_2017  %>%
+  mutate_at(.vars = c("REGION", "P4090", "P4000", "P4031S1", "P4031S1A1", "P4031S2", "P4031S3",
+                      "P4031S4", "P4031S4A1", "P4031S5", "P70", "NRO_ENCUESTA", "HOGAR_NUMERO", "PERSONA_NUMERO",
+                      "P6008", "P220", "P1069", "P1069S1", "P6050", "P605", "P6160", "P8586", "P6210S1", "P6945", "P606", "P5368S1",
+                      "P5368S2", "P5368S3", "P5368S4", "P5368S5", "P5368S6", "P5368S7", "P5368S8", "P5334S2", "P5334S3", "P5334S4", "P5334S5", "P5334S6",
+                      "P5334S7", "P5373S1", "P5373S10", "P5373S12", "P5373S11", "P5373S2", "P5373S3", "P5373S4", "P5373S5", "P5373S6", "P5373S7", "P5373S8",
+                      "P5373S9", "P5376S1", "P5376S2", "P5376S3", "P5376S4", "P5376S5", "P5376S6", "P5386", "P5389S1", "P5389S2", "P5389S3", "P5389S4", "P5389S5",
+                      "P5389S6", "P5389S7", "P5389S8", "P5389S9", "P5389S10", "P5389S11", "P5393", "P5396S1", "P5396S2", "P5396S3", "P5396S4", "P5396S5", "P5396S6",
+                      "P5400S1", "P5400S2", "P5400S3", "P5400S4", "P5400S5", "P5400S6", "P5400S7", "P5400S8", "P5332S6", "P5335", "P5336S1", "P5336S2", 
+                      "P5336S3", "P5336S4", "P5336S5", "P5336S6", "P5336S7", "P5336S8", "P5336S9", "P5336S10", "P5336S11", "P5336S12", "P5337S1", "P5337S2", "P5337S3",
+                      "P5337S4", "P5337S5", "P5337S6", "P5337S7", "P5338S1", "P5338S2", "P5338S3", "P5338S4", "P5338S5", "P5338S6", "P5321S1", "P5321S2", "P5321S3", 
+                      "P5321S4", "P5321S5", "P5321S6", "P5321S7", "P5321S8", "P5321S9", "P5322S1","P5322S2", "P5322S3", "P5322S4", "P5323", "P5324S2", "P5324S3", "P5324S4",
+                      "P5324S5", "P5327", "P5315S1", "P5315S2", "P5315S3", "P5315S4", 
+                      "P5315S5", "P5315S6", "P5315S7", "P5315S8", "P5319", "P5307S1", "P5307S2", "P5307S3", "P5307S4", "P5307S5", "P6934S1", "P6934S2",
+                      "P6934S3", "P6934S4", "P6934S5", "P6934S6", "P6934S7", "P6936S1", "P6936S2", "P6936S3", "P6936S4", "P6936S5", "P6936S6", "P6936S7", "P517", 
+                      "P5264S1", "P5264S2", "P5264S3", "P5264S4", "P5264S5", "P5264S6", "P5264S7", "P5265", "P5266S1", "P5266S2", "P5266S3", "P5266S4", "P5266S5",
+                      "P5266S6", "P5266S7", "P5266S8", "P5272S1", "P5272S2", "P5272S3", "P5272S4", "P5272S5", "P5272S6", "P5272S7", "P6939S2", "P6939S3", "P6939S4", 
+                      "P6939S5", "P6939S6", "P1764S1", "P1764S2", "P1764S3", "P1764S4", "P1764S5", "P1764S6", "P1764S7", "P1764S8", "P1758", "P6943S2", "P6943S3", 
+                      "P6943S4", "P1754", "P1753", "P1752", "P1751", "P1749", "P1750", "P6944S1", "P6944S2", "P6944S3", "P6944S4", "P6944S5", "P6944S6", "P6944S7"), .funs = factor)
+
+
 str(EncuestaPolitica_2015)
 dim(EncuestaPolitica_2015)
 ##---------Tratamiento de missing values 2015
@@ -340,7 +341,7 @@ porcentaje_na %>%
 filtro <- !sapply(EP_2015_clean, is.factor)
 categoricas <- names(EP_2015_clean)[filtro]
 myvars <- c("P4031S1A1", "P220", "v3")
-            
+
 calc_mode <- function(x){
   
   # List the distinct / unique values
@@ -357,7 +358,7 @@ calc_mode <- function(x){
 for (i in categoricas) {
   EP_2015_clean <- EP_2015_clean  %>% 
     mutate(i = if_else(is.na(i), 
-                      calc_mode(i), 
+                       calc_mode(i), 
                        i))
 }
 
@@ -391,14 +392,14 @@ for (x in numericas) {
 #P5263S12, P5263S14, P5263S2,
 
 EP_2015_clean <- EP_2015_clean %>% drop_na("P5785", "P5465", "P5785", "P5465", "P203", "P5328", "P5322S1", "P5322S2", "P5322S3", "P5322S4",  "P5263S10",
-                          "P5263S14", "P5263S2")
+                                           "P5263S14", "P5263S2")
 
 EP_2015_clean <- EP_2015_clean  %>% 
   mutate(P4031S1A1 = if_else(is.na(P4031S1A1), 
-                     calc_mode(P4031S1A1), 
-                     P4031S1A1))
-EP_2015_cleanF <- EP_2015_clean[c("P5785", "P5465", "P5785", "P5465", "P203", "P5328", "P5322S1", "P5322S2", "P5322S3", "P5322S4",  "P5263S10",
-                                  "P5263S14", "P5263S2", "P4031S1A1", "P220", "P6050",  "P6160", "P6210", "P606", "P203", "P5368S2", "P5368S6", "P5334S2", "P5334S3", "P5334S4", 
+                             calc_mode(P4031S1A1), 
+                             P4031S1A1))
+EP_2015_cleanF <- EP_2015_clean[c("P6933", "P5785", "P5465", "P203", "P5328", "P5322S1", "P5322S2", "P5322S3", "P5322S4",  "P5263S10",
+                                  "P5263S14", "P5263S2", "P4031S1A1", "P220", "P6050",  "P6160", "P6210", "P606", "P5368S2", "P5368S6", "P5334S2", "P5334S3", "P5334S4", 
                                   "P5334S7", "P5374", "P5389S10", "P5339S1", "P5321S7", "P5321S8",
                                   "P5323", "P6936S1", "P6936S2", "P6936S3", "P6936S4", "P6936S5", "P6936S6", "P6936S7", "P517", "P6939S6", "ELN 2015", "FARC 2015", "AUC 2015",
                                   "Tasa de Inscripción de cédulas 2015 (inscritos por mil habitantes)")]
@@ -447,10 +448,84 @@ EP_2017_clean <- EP_2017_clean  %>%
                              calc_mode(P4031S1A1), 
                              P4031S1A1))
 
-EP_2017_cleanF <- EP_2017_clean[c("P5785", "P5465", "P5785", "P5465", "P203", "P5328", "P5322S1", "P5322S2", "P5322S3", "P5322S4",  "P5263S10",
-                                  "P5263S14", "P5263S2", "P4031S1A1", "P220", "P6050",  "P6160", "P6210", "P606", "P203", "P5368S2", "P5368S6", "P5334S2", "P5334S3", "P5334S4", 
+EP_2017_cleanF <- EP_2017_clean[c("P6933","P5785", "P5465", "P203", "P5328", "P5322S1", "P5322S2", "P5322S3", "P5322S4",  "P5263S10",
+                                  "P5263S14", "P5263S2", "P4031S1A1", "P220", "P6050",  "P6160", "P6210", "P606", "P5368S2", "P5368S6", "P5334S2", "P5334S3", "P5334S4", 
                                   "P5334S7", "P5374", "P5389S10", "P5339S1", "P5321S7", "P5321S8",
                                   "P5323", "P6936S1", "P6936S2", "P6936S3", "P6936S4", "P6936S5", "P6936S6", "P6936S7",
                                   "P517", "P6939S6",  "ELN 2016", "FARC 2016", "PBCO 2016",
                                   "Tasa de Inscripción de cedulas 2018 (inscritos por mil habitantes)")]
 
+#Convertir en una binaria nuestra variable de interés
+
+#Convertir en Dummy la variable de interés. 0 si la persona votó 1 de lo contrario
+EP_2015_cleanF$P6933 <- ifelse(EP_2015_cleanF$P6933 == 1, 0, 1)
+table(EP_2015_cleanF$P6933)
+EP_2017_cleanF$P6933 <- ifelse(EP_2017_cleanF$P6933 == 1, 0, 1)
+table(EP_2017_cleanF$P6933)
+
+EP_2015_cleanF <- EP_2015_cleanF %>% rename(ELN = "ELN 2015")
+EP_2015_cleanF <- EP_2015_cleanF %>% rename(FARC = "FARC 2015")
+EP_2015_cleanF <- EP_2015_cleanF %>% rename(AUC = "AUC 2015")
+EP_2015_cleanF <- EP_2015_cleanF %>% rename(InscripcionCedulas = "Tasa de Inscripción de cédulas 2015 (inscritos por mil habitantes)")
+
+EP_2017_cleanF <- EP_2017_cleanF %>% rename(ELN = "ELN 2016")
+EP_2017_cleanF <- EP_2017_cleanF %>% rename(FARC = "FARC 2016")
+EP_2017_cleanF <- EP_2017_cleanF %>% rename(PBCO = "PBCO 2016")
+EP_2017_cleanF <- EP_2017_cleanF %>% rename(InscripcionCedulas = "Tasa de Inscripción de cedulas 2018 (inscritos por mil habitantes)")
+
+
+#---------------Division de la muestra---------------
+
+set.seed(1948)
+df_train <-  EP_2015_cleanF
+index <-  round(nrow(df_train)*0.3,digits=0)
+#Muestra aleatorizada del  dataset y mantener el número de observaciones del indice
+test.indices <- sample(1:nrow(df_train), index)
+# set de entrenamiento
+dff_train<-df_train[-test.indices,] 
+#30% set de testeo
+dff_test<-df_train[test.indices,] 
+#Seleccionar el set de entrenamiento en variables independientes y dependientes
+YTrain <- dff_train$P6933
+XTrain <- dff_train %>% dplyr::select(-P6933)
+#Seleccionar el set de testeo en variables independientes y dependientes
+YTest <- dff_test$P6933
+XTest <- dff_test %>% dplyr::select(- P6933)
+
+
+#Revisamos si la base está desbalanceada
+prop.table(table(dff_train$P6933))
+#La base muestra que más del 70% de las personas votaron, por lo que está desbalanceada. Haremos una muestra balanceada
+p_load(ROSE)
+dff_train_bal <- ovun.sample(P6933 ~ ., data = dff_train, method="over", p=0.5, seed = 1948)
+dff_train_bal <- dff_train_bal$data
+prop.table(table(dff_train_bal$P6933))
+
+
+#Modelo 1 OLS Regresion Logistica
+Modelo1 <- glm(P6933 ~ ., family = "binomial", data = dff_train)
+summary(Modelo1,type="text")
+
+mt_coeficientes_Voto <- Modelo1$coefficients %>%
+  enframe(name = "predictor", value = "coeficiente")
+
+mt_coeficientes_Voto %>%
+  filter(predictor != "(Intercept)") %>%
+  ggplot(aes(x = predictor, y = coeficiente)) +
+  geom_col() +
+  labs(title = "Coeficientes del modelo logit Decisión de Voto") +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 5, angle = 45))
+
+varImp(Modelo1, scale = T)
+
+YhatModelo1 <- predict(Modelo1, newdata = XTest, type = "response")
+plogis <- plogis(YhatModelo1)
+max(plogis)
+min(plogis)
+view(YhatModelo1)
+YhatModelo1Pred <- ifelse(plogis > 0.5, 1, 0)
+
+confusionMatrix(table(YTest, YhatModelo1Pred))
+
+#Modelo2 Logistica Balanceando Muestra
