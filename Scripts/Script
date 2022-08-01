@@ -4,7 +4,7 @@
 ##Paquetes 
 rm(list = ls())
 
-
+if (!require("tidyverse")) install.packages("tidyverse")
 install.packages("devtools")
 require("pacman")
 install.packages("ggpubr")
@@ -72,7 +72,6 @@ Riesgos_elec$`Guerrilas 2015` <- ifelse(is.na(Riesgos_elec$`Guerrilas 2015`), 0,
 Riesgos_elec$`PBCO 2015` <- ifelse(is.na(Riesgos_elec$`PBCO 2015`), 0, Riesgos_elec$`PBCO 2015`)
 Riesgos_elec$`PBCO 2016` <- ifelse(is.na(Riesgos_elec$`PBCO 2016`), 0, Riesgos_elec$`PBCO 2016`)
 Riesgos_elec$`PBCO 2018` <- ifelse(is.na(Riesgos_elec$`PBCO 2018`), 0, Riesgos_elec$`PBCO 2018`)
-
 
 ##Se crean consolidados por año
 
@@ -330,9 +329,7 @@ porcentaje_na %>%
 
 porcentaje_na %>%
   filter(cantidad_na <= 0.05) 
-  
-  
-  
+
 ###-----Imputación de variables de interés:
 ##P6933--> Variable dependiente de interés (Factor)
 
@@ -342,6 +339,8 @@ porcentaje_na %>%
 #--------------Año 2015
 filtro <- !sapply(EP_2015_clean, is.factor)
 categoricas <- names(EP_2015_clean)[filtro]
+myvars <- c("P4031S1A1", "P220", "v3")
+            
 calc_mode <- function(x){
   
   # List the distinct / unique values
@@ -363,6 +362,8 @@ for (i in categoricas) {
 }
 
 
+
+
 #La moda es la categoría más repetida, se prueba si el loop funcionó para todas las categóricas
 
 ##Ahora para las continuas
@@ -378,12 +379,29 @@ for (x in numericas) {
 }
 
 
-#Variables de interés P4031S1A1, P220 P5785, P5465, P6050,  P6160, P6210, P606, P203, P5368S2, P5368S6, P5334S2, P5334S3, P5334S4, 
+
+#Variables de interés: P4031S1A1, P220, P6050,  P6160, P6210, P606, P203, P5368S2, P5368S6, P5334S2, P5334S3, P5334S4, 
 #P5334S7, P5373S2, P5373S4, P5373S5, P5373S6, P5373S7, P5373S9, P5374, P5386, P5389S10, P5393, P5396S1, P5396S3,
 #P5400S1, P5400S3, P5400S5, P5400S6, P5400S7, P5336S1, P5336S2, P5336S3, P5336S4, P5336S5, P5336S6, P5336S7, P5336S8,
-#P5336S9, P5337S1, P5337S2, P5337S3, P5337S4, P5337S5, P5339S1, P5321S7, P5321S8, P5322S1, P5322S2, P5322S3, P5322S4,
-#P5323, P5325S1, P5325S2, P5325S3, P5325S4, P5328, P6936S1, P6936S2, P6936S3, P6936S4, P6936S5, P6936S6, P6936S7, P5263S10,
-#P5263S12, P5263S14, P5263S2, P517,  P5264S1,  P5264S2,  P5264S3,  P5264S4,  P5264S5,  P5264S6, P6939S6, P1754
+#P5336S9, P5337S1, P5337S2, P5337S3, P5337S4, P5337S5, P5339S1, P5321S7, P5321S8,
+#P5323, P5325S1, P5325S2, P5325S3, P5325S4, P6936S1, P6936S2, P6936S3, P6936S4, P6936S5, P6936S6, P6936S7,
+#P517,  P5264S1,  P5264S2,  P5264S3,  P5264S4,  P5264S5,  P5264S6, P6939S6, P1754
+
+# Numericas: P5785, P5465, P203, P5328, P5322S1, P5322S2, P5322S3, P5322S4,  P5263S10,
+#P5263S12, P5263S14, P5263S2,
+
+EP_2015_clean <- EP_2015_clean %>% drop_na("P5785", "P5465", "P5785", "P5465", "P203", "P5328", "P5322S1", "P5322S2", "P5322S3", "P5322S4",  "P5263S10",
+                          "P5263S14", "P5263S2")
+
+EP_2015_clean <- EP_2015_clean  %>% 
+  mutate(P4031S1A1 = if_else(is.na(P4031S1A1), 
+                     calc_mode(P4031S1A1), 
+                     P4031S1A1))
+EP_2015_cleanF <- EP_2015_clean[c("P5785", "P5465", "P5785", "P5465", "P203", "P5328", "P5322S1", "P5322S2", "P5322S3", "P5322S4",  "P5263S10",
+                                  "P5263S14", "P5263S2", "P4031S1A1", "P220", "P6050",  "P6160", "P6210", "P606", "P203", "P5368S2", "P5368S6", "P5334S2", "P5334S3", "P5334S4", 
+                                  "P5334S7", "P5374", "P5389S10", "P5339S1", "P5321S7", "P5321S8",
+                                  "P5323", "P6936S1", "P6936S2", "P6936S3", "P6936S4", "P6936S5", "P6936S6", "P6936S7", "P517", "P6939S6", "ELN 2015", "FARC 2015", "AUC 2015",
+                                  "Tasa de Inscripción de cédulas 2015 (inscritos por mil habitantes)")]
 
 #--------------Año 2017
 filtro <- !sapply(EP_2017_clean, is.factor)
@@ -399,6 +417,16 @@ for (i in categoricas) {
 
 #La moda es la categoría más repetida, se prueba si el loop funcionó para todas las categóricas
 
+#Variables de interés P4031S1A1, P220, P6050,  P6160, P6210, P606, P203, P5368S2, P5368S6, P5334S2, P5334S3, P5334S4, 
+#P5334S7, P5373S2, P5373S4, P5373S5, P5373S6, P5373S7, P5373S9, P5374, P5386, P5389S10, P5393, P5396S1, P5396S3,
+#P5400S1, P5400S3, P5400S5, P5400S6, P5400S7, P5336S1, P5336S2, P5336S3, P5336S4, P5336S5, P5336S6, P5336S7, P5336S8,
+#P5336S9, P5337S1, P5337S2, P5337S3, P5337S4, P5337S5, P5339S1, P5321S7, P5321S8,
+#P5323, P5325S1, P5325S2, P5325S3, P5325S4, P6936S1, P6936S2, P6936S3, P6936S4, P6936S5, P6936S6, P6936S7,
+#P517,  P5264S1,  P5264S2,  P5264S3,  P5264S4,  P5264S5,  P5264S6, P6939S6, P1754
+
+# Numericas: P5785, P5465, P203, P5328, P5322S1, P5322S2, P5322S3, P5322S4,  P5263S10,
+#P5263S12, P5263S14, P5263S2
+
 ##Ahora para las continuas
 
 filtro <- !sapply(EP_2017_clean, is.numeric)
@@ -410,4 +438,19 @@ for (x in numericas) {
   EP_2017_clean <- EP_2017_clean %>%
     mutate(x = ifelse(is.na(x), median(x, na.rm = T), x))
 }
+
+EP_2017_clean <- EP_2017_clean %>% drop_na("P5785", "P5465", "P5785", "P5465", "P203", "P5328", "P5322S1", "P5322S2", "P5322S3", "P5322S4",  "P5263S10",
+                                           "P5263S14", "P5263S2")
+
+EP_2017_clean <- EP_2017_clean  %>% 
+  mutate(P4031S1A1 = if_else(is.na(P4031S1A1), 
+                             calc_mode(P4031S1A1), 
+                             P4031S1A1))
+
+EP_2017_cleanF <- EP_2017_clean[c("P5785", "P5465", "P5785", "P5465", "P203", "P5328", "P5322S1", "P5322S2", "P5322S3", "P5322S4",  "P5263S10",
+                                  "P5263S14", "P5263S2", "P4031S1A1", "P220", "P6050",  "P6160", "P6210", "P606", "P203", "P5368S2", "P5368S6", "P5334S2", "P5334S3", "P5334S4", 
+                                  "P5334S7", "P5374", "P5389S10", "P5339S1", "P5321S7", "P5321S8",
+                                  "P5323", "P6936S1", "P6936S2", "P6936S3", "P6936S4", "P6936S5", "P6936S6", "P6936S7",
+                                  "P517", "P6939S6",  "ELN 2016", "FARC 2016", "PBCO 2016",
+                                  "Tasa de Inscripción de cedulas 2018 (inscritos por mil habitantes)")]
 
