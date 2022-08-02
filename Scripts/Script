@@ -499,15 +499,21 @@ prop.table(table(dff_train$P6933))
 p_load(ROSE)
 dff_train_bal <- ovun.sample(P6933 ~ ., data = dff_train, method="over", p=0.5, seed = 1948)
 dff_train_bal <- dff_train_bal$data
+YTrain_bal <- dff_train_bal$P6933
 prop.table(table(dff_train_bal$P6933))
 
-
+p_load(stargazer)
 #Modelo 1 OLS Regresion Logistica
 Modelo1 <- glm(P6933 ~ ., family = "binomial", data = dff_train)
 summary(Modelo1,type="text")
 
+VariablesImpM1 <- varImp(Modelo1, scale=TRUE)
+write.csv(VariablesImpM1, "VariableImpM1.csv", row.names = FALSE)
+stargazer(Modelo1, type = "text", out = "Modelo1.Txt")
+
 mt_coeficientes_Voto <- Modelo1$coefficients %>%
   enframe(name = "predictor", value = "coeficiente")
+
 
 mt_coeficientes_Voto %>%
   filter(predictor != "(Intercept)") %>%
@@ -517,7 +523,6 @@ mt_coeficientes_Voto %>%
   theme_bw() +
   theme(axis.text.x = element_text(size = 5, angle = 45))
 
-varImp(Modelo1, scale = T)
 
 YhatModelo1 <- predict(Modelo1, newdata = XTest, type = "response")
 plogis <- plogis(YhatModelo1)
@@ -526,6 +531,421 @@ min(plogis)
 view(YhatModelo1)
 YhatModelo1Pred <- ifelse(plogis > 0.5, 1, 0)
 
-confusionMatrix(table(YTest, YhatModelo1Pred))
+MLogit1 <- confusionMatrix(table(YTest, YhatModelo1Pred))
+
+p_load(ROCR)
+
+pred <- prediction(plogis, YTest)
+perf <- performance(pred,"tpr","fpr")
+
+aucMod1 <- performance(pred,"auc")@y.values
+aucMod1
+
+plot(perf,colorize=TRUE)
+
 
 #Modelo2 Logistica Balanceando Muestra
+Modelo2 <- glm(P6933 ~ ., family = "binomial", data = dff_train_bal)
+summary(Modelo2)
+
+VariablesImpM2 <- varImp(Modelo2, scale=TRUE)
+write.csv(VariablesImpM2, "VariableImpM2.csv", row.names = FALSE)
+stargazer(Modelo2, type = "text", out = "Modelo2.Txt")
+
+
+mt_coeficientes_Voto2 <- Modelo1$coefficients %>%
+  enframe(name = "predictor", value = "coeficiente")
+
+mt_coeficientes_Voto2 %>%
+  filter(predictor != "(Intercept)") %>%
+  ggplot(aes(x = predictor, y = coeficiente)) +
+  geom_col() +
+  labs(title = "Coeficientes del modelo logit2 Decisión de Voto") +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 5, angle = 45))
+
+YhatModelo2 <- predict(Modelo2, newdata = XTest, type = "response")
+plogis2 <- plogis(YhatModelo1)
+max(plogis2)
+min(plogis2)
+view(YhatModelo2)
+YhatModelo2Pred2 <- ifelse(plogis > 0.5, 1, 0)
+
+MLogit2 <- confusionMatrix(table(YTest, YhatModelo2Pred2))
+
+
+pred2 <- prediction(plogis2, YTest)
+perf2 <- performance(pred2,"tpr","fpr")
+
+aucMod2 <- performance(pred2,"auc")@y.values
+aucMod2
+
+plot(perf,colorize=TRUE)
+
+
+#Modelo3 Lasso
+p_load(glmnet)
+XTrainSparse <- model.matrix(P6933~., dff_train_bal)[,-1]
+
+modelo_voto_lasso <- glmnet(
+  x           = XTrainSparse,
+  y           = YTrain_bal,
+  family = "binomial",
+  alpha       = 1,
+  nlambda     = 100,
+  standardize = TRUE
+)
+
+regularizacion_lasso_voto <- modelo_voto_lasso$beta %>% 
+  as.matrix() %>%
+  t() %>% 
+  as_tibble() %>%
+  mutate(lambda = modelo_voto_lasso$lambda)
+
+regularizacion_lasso_voto <- regularizacion_lasso_voto %>%
+  pivot_longer(
+    cols = !lambda, 
+    names_to = "predictor",
+    values_to = "coeficientes"
+  )
+regularizacion_lasso_voto %>%
+  ggplot(aes(x = lambda, y = coeficientes, color = predictor)) +
+  geom_line() +
+  scale_x_log10(
+    breaks = trans_breaks("log10", function(x) 10^x),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  labs(title = "Coeficientes del modelo en función de la regularización del voto") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+set.seed(0711)
+cv_error_lasso_voto <- cv.glmnet(
+  x      = XTrainSparse,
+  y      = YTrain_bal,
+  family = "binomial",
+  alpha  = 1,
+  nfolds = 10,
+  standardize  = TRUE
+)
+
+plot(cv_error_lasso_voto)
+
+#Mejor Lambda
+cv_error_lasso_voto$lambda.min
+
+#Estimacion de modelo con lambda optimo 
+modelo_op_lasso_voto <- glmnet(
+  x           = XTrainSparse,
+  y           = YTrain_bal,
+  family = "binomial",
+  alpha       = 1,
+  lambda      = cv_error_lasso_voto$lambda.min,
+  standardize = TRUE)
+
+
+
+#Coeficientes 
+df_coef_lasso <- coef(modelo_op_lasso_voto) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "predictor") %>%
+  rename(coeficiente = s0)
+
+write.csv(df_coef_lasso, "CoeficientesLasso.csv", row.names = FALSE)
+
+df_coef_lasso%>%
+  filter(predictor != "(Intercept)") %>%
+  ggplot(aes(x = predictor, y = coeficiente)) +
+  geom_col() +
+  labs(title = "Coeficientes del modelo Lasso") +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 6, angle = 45))
+
+df_coef_lasso %>%
+  filter(
+    predictor != "(Intercept)",
+    coeficiente != 0)
+
+XTestSparse <- model.matrix(P6933~., dff_test)[,-1]
+predlasso <- predict(modelo_op_lasso_voto, s = cv_error_lasso_voto$lambda.min, XTestSparse, type = "class" )
+predlassoProb <- predict(modelo_op_lasso_voto, s = cv_error_lasso_voto$lambda.min, XTestSparse, type = "response" )
+MLasso <- confusionMatrix(table(YTest, predlasso))
+
+predictionlasso <- prediction(predlassoProb, YTest)
+perflasso <- performance(predictionlasso,"tpr","fpr")
+
+aucLasso <- performance(predictionlasso,"auc")@y.values
+aucLasso
+
+plot(perflasso,colorize=TRUE)
+
+
+
+#Con los dos modelos anteriores se puede ver que hay variables que pesan más que otras. Por ejemplo en violencia FARC y ELN generan un peso significativo en los modelos
+#P06, P6063, P60507, P5172, P6066, P5368S6, P6062,P5334S3, P60506, P53232, P6064 generan un impacto hacia arriba
+#P6210, P5368S6, P5322S3, P6050, P6936S7, P4031S1A1, generan un impacto hacia abajo.
+#Se realizará un modelo solo con estas variables
+
+
+#Modelo Ridge
+
+modelo_voto_ridge <- glmnet(
+  x           = XTrainSparse,
+  y           = YTrain_bal,
+  family = "binomial",
+  alpha       = 0,
+  nlambda     = 100,
+  standardize = TRUE
+)
+
+regularizacion_ridge_voto <- modelo_voto_ridge$beta %>% 
+  as.matrix() %>%
+  t() %>% 
+  as_tibble() %>%
+  mutate(lambda = modelo_voto_ridge$lambda)
+
+regularizacion_ridge_voto <- regularizacion_ridge_voto %>%
+  pivot_longer(
+    cols = !lambda, 
+    names_to = "predictor",
+    values_to = "coeficientes"
+  )
+regularizacion_ridge_voto %>%
+  ggplot(aes(x = lambda, y = coeficientes, color = predictor)) +
+  geom_line() +
+  scale_x_log10(
+    breaks = trans_breaks("log10", function(x) 10^x),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  labs(title = "Coeficientes del modelo en función de la regularización del voto") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+set.seed(0711)
+cv_error_ridge_voto <- cv.glmnet(
+  x      = XTrainSparse,
+  y      = YTrain_bal,
+  family = "binomial",
+  alpha  = 0,
+  nfolds = 10,
+  standardize  = TRUE
+)
+
+plot(cv_error_ridge_voto)
+
+#Mejor Lambda
+cv_error_ridge_voto$lambda.min
+
+#Estimacion de modelo con lambda optimo 
+modelo_op_ridge_voto <- glmnet(
+  x           = XTrainSparse,
+  y           = YTrain_bal,
+  family = "binomial",
+  alpha       = 0,
+  lambda      = cv_error_ridge_voto$lambda.min,
+  standardize = TRUE)
+
+#Coeficientes 
+df_coef_ridge <- coef(modelo_op_ridge_voto) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "predictor") %>%
+  rename(coeficiente = s0)
+
+write.csv(df_coef_ridge, "CoeficientesRidge.csv", row.names = FALSE)
+
+df_coef_ridge%>%
+  filter(predictor != "(Intercept)") %>%
+  ggplot(aes(x = predictor, y = coeficiente)) +
+  geom_col() +
+  labs(title = "Coeficientes del modelo ridge") +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 6, angle = 45))
+
+df_coef_ridge %>%
+  filter(
+    predictor != "(Intercept)",
+    coeficiente != 0)
+
+XTestSparse <- model.matrix(P6933~., dff_test)[,-1]
+predridge <- predict(modelo_op_ridge_voto, s = cv_error_ridge_voto$lambda.min, XTestSparse, type = "class" )
+predridgeProb <- predict(modelo_op_ridge_voto, s = cv_error_ridge_voto$lambda.min, XTestSparse, type = "response" )
+MRidge <- confusionMatrix(table(YTest, predridge))
+
+predictionridge <- prediction(predridgeProb, YTest)
+perfridge <- performance(predictionridge,"tpr","fpr")
+
+aucridge <- performance(predictionridge,"auc")@y.values
+aucridge
+
+plot(perfridge,colorize=TRUE)
+
+
+#Modelo AdaBoost
+
+set.seed(1410)
+fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
+ctrl<- trainControl(method = "cv",
+                    number = 5,
+                    summaryFunction = fiveStats,
+                    classProbs = TRUE,
+                    verbose=FALSE,
+                    savePredictions = T)
+
+
+grid_default <- expand.grid(nrounds = c(250,500),
+                            max_depth = c(4,5,6),
+                            eta = c(0.05),
+                            gamma = c(0.01),
+                            min_child_weight = c(10, 25, 50),
+                            colsample_bytree = c(0.7),
+                            subsample = c(0.6))
+
+p_load()
+
+dff_train_bal$P6933 <- as.factor(dff_train_bal$P6933)
+dff_train_bal$Voto <- ifelse(dff_train_bal$P6933 == 0, "Si", "No")
+dff_train_bal$Voto <- as.factor(dff_train_bal$Voto)
+
+ModeloXG  <- train(
+  Voto ~ FARC+ ELN + P606 + P6050 + P517 + P5368S6 + P5334S3 + P5323 + P6210 + P5368S6 + P6936S7,
+  data = dff_train_bal,
+  method = "xgbTree",
+  trControl = ctrl,
+  metric = "Sens",
+  family = "binomial",
+  tune_grid = grid_default,
+  preProcess = c("center", "scale")
+)
+
+plot(ModeloXG)
+ModeloXG
+varImpXG <- varImp(ModeloXG,scale=TRUE)
+write.csv(varImpXG$importance, "varImpXG.csv", row.names = TRUE)
+
+YhatXG <- predict(ModeloXG, XTest)
+YhatXGProb <- predict(ModeloXG, XTest, type ="prob")
+VotoTest <- ifelse(YTest == 0, "Si", "No")
+VotoTest <- as.factor(VotoTest)
+MXG <- confusionMatrix(table(VotoTest, YhatXG))
+
+predictionXGBoost <- prediction(YhatXGProb$No, YTest)
+perfXG <- performance(predictionXGBoost,"tpr","fpr")
+
+aucXGBoost <- performance(predictionXGBoost,"auc")@y.values
+aucXGBoost
+
+plot(perfXG,colorize=TRUE)
+
+
+
+#--Modelo XGBoost con todas la variables
+dff_train_bal2 <- dff_train_bal[,-1]
+
+ModeloXG2  <- train(
+  Voto ~ .,
+  data = dff_train_bal2,
+  method = "xgbTree",
+  trControl = ctrl,
+  metric = "Sens",
+  family = "binomial",
+  tune_grid = grid_default,
+  preProcess = c("center", "scale")
+)
+
+plot(ModeloXG2)
+ModeloXG2
+varImpXG2 <- varImp(ModeloXG2,scale=TRUE)
+write.csv(varImpXG2$importance, "varImpXG2.csv", row.names = TRUE)
+
+YhatXG2 <- predict(ModeloXG2, XTest)
+YhatXG2Prob <- predict(ModeloXG, XTest, type ="prob")
+MXG2 <- confusionMatrix(table(VotoTest, YhatXG2))
+
+predictionXGBoost2 <- prediction(YhatXG2Prob$No, YTest)
+perfXG2 <- performance(predictionXGBoost2,"tpr","fpr")
+
+aucXGBoost2 <- performance(predictionXGBoost2,"auc")@y.values
+aucXGBoost2
+
+plot(perfXG2,colorize=TRUE)
+
+#------Comparación----------------
+
+aucMod1
+aucMod2
+aucLasso
+aucridge
+aucXGBoost
+aucXGBoost2
+
+AccM1 <-MLogit1$overall[1]
+SensM1 <-MLogit1$byClass[2]
+NegPredValM1 <- MLogit1$byClass[4]
+
+AccM2 <-MLogit2$overall[1]
+SensM2 <-MLogit2$byClass[2]
+NegPredValM2 <- MLogit2$byClass[4]
+
+AccLasso <-MLasso$overall[1]
+SensLasso <-MLasso$byClass[2]
+NegPredValLasso <- MLasso$byClass[4]
+
+AccRidge <-MRidge$overall[1]
+SensRidge <-MRidge$byClass[2]
+NegPredValRidge <- MRidge$byClass[4]
+
+AccXGB <-MXG$overall[1]
+SensXGB <-MXG$byClass[1]
+NegPredValXGB <- MXG$byClass[3]
+
+AccXGB2 <-MXG2$overall[1]
+SensXGB2 <-MXG2$byClass[1]
+NegPredValXGB2 <- MXG2$byClass[3]
+
+
+Logit1 <- c(AccM1, SensM1, NegPredValM1, aucMod1)
+Logit2 <- c(AccM2, SensM2, NegPredValM2, aucMod2)
+LassoR <- c(AccLasso, SensLasso, NegPredValLasso, aucLasso)
+RidgeR <- c(AccRidge, SensRidge, NegPredValRidge, aucridge)
+XGB1 <- c(AccXGB, SensXGB, NegPredValXGB, aucXGBoost)
+XGB2 <- c(AccXGB2, SensXGB2, NegPredValXGB2, aucXGBoost2)
+
+
+ResultadosEstadisticos <- rbind(Logit1, Logit2, LassoR, RidgeR, XGB1, XGB2)
+class(ResultadosEstadisticos)
+write.csv(ResultadosEstadisticos, "EstFinales.csv", row.names = T)
+ResultadosEstadisticos <- as.data.frame(ResultadosEstadisticos)
+class(ResultadosEstadisticos)
+ResultadosEstadisticos <-ResultadosEstadisticos %>% rename(AUC = V4)
+
+#-----Resultados en el 2017--------------------
+
+Voto2017 <- ifelse(EP_2017_cleanF$P6933 == 0, "Si", "No")
+EP_2017_cleanF$AUC <- EP_2017_clean$`AU ELN 2018`
+X2017 <- EP_2017_cleanF %>% dplyr::select(-P6933)
+
+str(dff_train_bal2$P5322S1)
+str(dff_train_bal2$P5322S2)
+str(dff_train_bal$P6210)
+str(dff_train_bal2$P5321S7)
+str(dff_train_bal2$P5321S8)
+
+str(X2017$P5322S1)
+str(X2017$P5322S2)
+str(X2017$P6210)
+str(X2017$P5321S7)
+str(X2017$P5321S8)
+
+X2017$P5322S1 <- as.numeric(X2017$P5322S1)
+X2017$P5322S2 <- as.numeric(X2017$P5322S2)
+X2017$P6210 <- as.factor(X2017$P6210)
+X2017$P5321S7 <- as.numeric(X2017$P5321S7)
+X2017$P5321S8 <- as.numeric(X2017$P5321S8)
+
+VotoHat2017 <- predict(ModeloXG2, newdata = X2017)
+
+MFinal <- confusionMatrix(table(Voto2017, VotoHat2017))
+
+stargazer(MFinal$table, type = "text", out = "MatrizFinal.Txt")
+stargazer(MFinal$overall, type = "text", out = "MatrizFinalAccuracy.Txt")
+stargazer(MFinal$byClass, type = "text", out = "MatrizFinalClass.Txt")
