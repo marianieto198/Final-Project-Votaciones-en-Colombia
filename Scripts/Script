@@ -473,6 +473,202 @@ EP_2017_cleanF <- EP_2017_cleanF %>% rename(FARC = "FARC 2016")
 EP_2017_cleanF <- EP_2017_cleanF %>% rename(PBCO = "PBCO 2016")
 EP_2017_cleanF <- EP_2017_cleanF %>% rename(InscripcionCedulas = "Tasa de Inscripción de cedulas 2018 (inscritos por mil habitantes)")
 
+#---------------Estadísticas Descriptivas 
+
+
+##En búsqueda de valores atípicos se realizan gráficos de cajas y análisis de correlaciones
+
+###-----Año 2015
+##Distribución  percepciones
+d1 <- ggplot(EP_2015_cleanF, aes(as.factor(P6933), P5328)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Izquierda o Derecha", x="Votó o no") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+
+##Distribución votando se puede influir en el gobierno
+d2 <- ggplot(EP_2015_cleanF, aes(as.factor(P6933), P5322S1)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Votar es útil", x="Votó o no") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+
+##Distribución las elecciones son útiles
+d3 <- ggplot(EP_2015_cleanF, aes(as.factor(P6933), P5785)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Edad", x="Votó o no") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+
+##Distribución los partidos representan a los colombianos
+d4 <- ggplot(EP_2015_cleanF, aes(as.factor(P6933), P5322S2)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "¿Los partidos representan a los colombianos?", x="Votó o no") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+
+ggarrange(d1, d2, d3, d4, nrow = 2, ncol = 2)
+
+##Hay valores de 99 que no dejan ver bien la distribución en las variables 
+
+EP_2015_cleanF <- EP_2015_cleanF %>%
+  mutate(P5322S2= ifelse(P5322S2 ==99, median(P5322S2, na.rm = T), P5322S2))
+EP_2015_cleanF <- EP_2015_cleanF %>%
+  mutate(P5322S1= ifelse(P5322S1 ==99, median(P5322S1, na.rm = T), P5322S1))
+EP_2015_cleanF <- EP_2015_cleanF %>%
+  mutate(P203= ifelse(P203 ==99, calc_mode(P203), P203))
+EP_2015_cleanF <- EP_2015_cleanF %>%
+  mutate(P5328= ifelse(P5328 ==99, calc_mode(P5328), P5328))
+
+##Distribución edad y abstencionismo
+d5 <- ggplot(EP_2015_cleanF, aes(as.factor(P6933), P5785)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Edad", x="Votó o no") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+d5
+##Distribución por sexo y abstencionismo
+d6 <- ggplot(EP_2015_cleanF, aes(as.factor(P6933), fill=factor(P220))) +
+  geom_bar(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(x = "Sexo") + scale_x_discrete(labels = c("1"="Hombre", "2"="Mujer"))
+
+d7 <- ggplot(EP_2015_cleanF, aes(x=factor(P6210), fill=factor(P6933))) +
+  geom_bar(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(x = "Nivel Educativo") + scale_x_discrete(labels = c("1"="Ninguno", "2"="Preescolar", "3"="Básica Primaria", "4"="Básica Secundaria", "5"="Media", "6"="Superior o universitaria", "99"="No sabe"))
+
+#Tablas5
+ggarrange(d5, d6, d7, nrow = 2, ncol = 1)
+
+vartable <- st(EP_2015_cleanF, vars = c('P6933','P5785', 'P6210', 'P220', 'P5322S1', 'P203', 'P5465', 'P5328', 'P5322S2', 'P5322S3', 'P5322S4', 'P5263S10',
+                                        'P5263S14','P5263S2'), labels = c("Votó o no", "Edad", "Nivel Educativo", "Sexo", "Votar genera cambios", "Recibe ingreso", "Raza", "Inclinación Política",
+                                                                          "Los partidos representan", "Votar influye en el gobierno", "Políticos no se interesan", "Confia en partidos",
+                                                                          "Confía en la Registraduría", "Confía en la alcaldía"))
+
+
+##Correlaciones
+# Primero seleccionamos las columnas numéricas
+#Se obtienen las correlaciones
+correla <- EP_2015_cleanF[c('P6933','P6210', 'P220', 'P5785', 'P5322S1', 'P203', 'P5785', 'P5465', 'P203', 'P5328', 'P5322S1', 'P5322S2', 'P5322S3', 'P5322S4',  'P5263S10',
+                            'P5263S14', 'P5263S2')]
+#Se mantiene toda la tabla
+
+corrplot(cor(correla[, unlist(lapply(correla, is.numeric))]))
+
+
+
+#Voto o no
+ggplot(EP_2015_cleanF, aes(P6933)) + labs(x = "Votó en las últimas elecciones")  + geom_bar(fill = "darkslategray3", alpha = 0.5) + scale_fill_manual(values =c("0"="Votar", "1"="No votó")) + scale_fill_manual(values = c("Votó", "No votó")) 
+prop.table(table(EP_2015_cleanF$P6933))
+
+tapply(EP_2017_cleanF$P220, EP_2017_cleanF$P6933, summary) 
+
+ggplot(EP_2015_cleanF,aes(x = factor(P6933), fill = P220)) +
+  geom_bar() + labs(x = "Votó en las últimas elecciones") + 
+
+  EP_2015_cleanF[, as.list(summary(P6210)), by = ]
+            
+##-------Año 2017
+
+d1 <- ggplot(EP_2017_cleanF, aes(as.factor(P6933), P5328)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Izquierda o Derecha", x="Votó o no") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+
+##Distribución votando se puede influir en el gobierno
+d2 <- ggplot(EP_2017_cleanF, aes(as.factor(P6933), P5263S14)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Votar es útil", x="Votó o no") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+
+##Distribución las elecciones son útiles
+d3 <- ggplot(EP_2017_cleanF, aes(as.factor(P6933), P5785)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Edad", x="Votó o no") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+
+##Distribución los partidos representan a los colombianos
+d4 <- ggplot(EP_2017_cleanF, aes(as.factor(P6933), P5263S10)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Confía en los partidos", x="Votó o no") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+
+ggarrange(d1, d2, d3, d4, nrow = 2, ncol = 2)
+
+##Hay valores de 99 que no dejan ver bien la distribución en las variables 
+
+EP_2017_cleanF <- EP_2017_cleanF %>%
+  mutate(P5363S14= ifelse(P5263S14 ==99, median(P5263S14, na.rm = T), P5263S14))
+EP_2017_cleanF <- EP_2017_cleanF %>%
+  mutate(P5263S10= ifelse(P5263S10 ==99, median(P5263S10, na.rm = T), P5263S10))
+EP_2017_cleanF <- EP_2017_cleanF %>%
+  mutate(P203= ifelse(P203 ==99, calc_mode(P203), P203))
+EP_2017_cleanF <- EP_2017_cleanF %>%
+  mutate(P5328= ifelse(P5328 ==99, calc_mode(P5328), P5328))
+
+##Distribución edad y abstencionismo
+d5 <- ggplot(EP_2017_cleanF, aes(as.factor(P6933), P5785)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Edad") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+d5
+##Distribución por sexo y abstencionismo
+d6 <- ggplot(EP_2017_cleanF, aes(as.factor(P220), group= as.factor(P6933))) +
+  geom_bar(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(x = "Sexo") + scale_x_discrete(labels = c("1"="Hombre", "2"="Mujer"))
+
+d7 <- ggplot(EP_2017_cleanF, aes(as.factor(P6210), group= as.factor(P6933))) +
+  geom_bar(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(x = "Nivel Educativo") + scale_x_discrete(labels = c("1"="Ninguno", "2"="Preescolar", "3"="Básica Primaria", "4"="Básica Secundaria", "5"="Media", "6"="Superior o universitaria", "99"="No sabe"))
+
+d8 <- ggplot(EP_2017_cleanF, aes(as.factor(P6933), P5328)) +
+  geom_boxplot(fill = "darkslategray3", alpha = 0.5) +
+  theme_classic() +
+  labs(y = "Encuestados") +
+  scale_y_continuous() +
+  scale_x_discrete( ) 
+
+#Tablas5
+ggarrange(d5, d6, d7, d8, nrow = 2, ncol = 2)
+
+vartable <- st(EP_2017_cleanF, vars = c('P6933','P5785', 'P6210', 'P220', 'P5322S1', 'P203', 'P5465', 'P5328', 'P5322S2', 'P5322S3', 'P5322S4', 'P5263S10',
+                                        'P5263S14','P5263S2'), labels = c("Votó o no", "Edad", "Nivel Educativo", "Sexo", "Votar genera cambios", "Recibe ingreso", "Raza", "Inclinación Política",
+                                                                          "Los partidos representan", "Votar influye en el gobierno", "Políticos no se interesan", "Confia en partidos",
+                                                                          "Confía en la Registraduría", "Confía en la alcaldía"))
+
+
+##Correlaciones
+# Primero seleccionamos las columnas numéricas
+#Se obtienen las correlaciones
+correla <- EP_2017_cleanF[c('P6933','P6210', 'P220', 'P5785', 'P5322S1', 'P203', 'P5785', 'P5465', 'P203', 'P5328', 'P5322S1', 'P5322S2', 'P5322S3', 'P5322S4',  'P5263S10',
+                            'P5263S14', 'P5263S2')]
+#Se mantiene toda la tabla
+
+corrplot(cor(correla[, unlist(lapply(correla, is.numeric))]))
+
+
+
+#Voto o no
+ggplot(EP_2017_cleanF, aes(P6933)) + labs(x = "Votó en las últimas elecciones")  + geom_bar(fill = "darkslategray3", alpha = 0.5) + scale_fill_manual(values =c("0"="Votar", "1"="No votó"))
+prop.table(table(EP_2017_cleanF$P6933))
 
 #---------------Division de la muestra---------------
 
