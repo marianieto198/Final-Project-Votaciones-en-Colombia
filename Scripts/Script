@@ -551,7 +551,19 @@ vartable <- st(EP_2015_cleanF, vars = c('P6933','P5785', 'P6210', 'P220', 'P5322
                                                                           "Los partidos representan", "Votar influye en el gobierno", "Políticos no se interesan", "Confia en partidos",
                                                                           "Confía en la Registraduría", "Confía en la alcaldía"))
 
+#Tabla con estadísticas descriptivas 
 
+stargazer(EP_2015_cleanF[ c('FARC','ELN', 'P5785', 'P5322S1', 'P5328')], type = "text", 
+          digits=2, median = TRUE, iqr = TRUE,
+          title="Descriptive statistics",
+          covariate.labels=c("Presencia FARC", "Presencia ELN", "Edad", "Voto útil para generar cambios", "Ideología"),
+          out="table1.txt")
+
+stargazer(EP_2015_cleanF[ c('P606','P517','P5321S7','P5339S1')], type = "text", 
+          digits=2, median = TRUE, iqr = TRUE,
+          title="Descriptive statistics",
+          covariate.labels=c("Ocupacion principal", "Info actualidad país", "Importancia elecciones", "Conteo de votos transparente"),
+          out="table2.txt")
 ##Correlaciones
 # Primero seleccionamos las columnas numéricas
 #Se obtienen las correlaciones
